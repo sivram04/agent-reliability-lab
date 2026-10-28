@@ -1,0 +1,5 @@
+# Start the server first: python -m fixtures.http_server 8765
+name: orderbot-good-http
+version: "1"
+adapter: http
+url: http://127.0.0.1:8765/chat

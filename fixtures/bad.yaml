@@ -1,0 +1,4 @@
+name: orderbot-bad
+version: "1"
+adapter: python
+entrypoint: fixtures.agents:bad_agent

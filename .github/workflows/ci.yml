@@ -1,0 +1,21 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
+      - name: Empty suite (Phase 0 done-when)
+        run: arl run --target fixtures/good.yaml
+      - name: Smoke suite gate
+        run: arl run --target fixtures/good.yaml --suite scenarios/smoke --repeats 3 --min-pass-rate 1.0
+      - name: Smoke suite over MCP
+        run: arl run --target fixtures/good_mcp.yaml --suite scenarios/smoke --min-pass-rate 1.0
+      - name: Record then replay
+        run: |
+          arl run --target fixtures/bad.yaml --suite scenarios/smoke --cassette cassettes/bad.json --record-mode record
+          arl run --target fixtures/bad.yaml --suite scenarios/smoke --cassette cassettes/bad.json --record-mode replay

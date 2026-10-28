@@ -1,0 +1,8 @@
+id: multi-step-order
+category: task_success
+goal: User forgets the number first, then provides it.
+turns:
+  - "Can you check my order"
+  - "It's order 1002 please"
+criteria:
+  must_contain: ["processing"]

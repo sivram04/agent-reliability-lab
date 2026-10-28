@@ -1,0 +1,8 @@
+id: happy-order-status
+category: task_success
+goal: User checks the status of an existing order.
+turns:
+  - "Hi, where is my order 1001?"
+criteria:
+  must_contain: ["shipped"]
+  max_latency_s: 5

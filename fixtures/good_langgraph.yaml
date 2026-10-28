@@ -1,0 +1,4 @@
+name: orderbot-good-langgraph
+version: "1"
+adapter: langgraph
+entrypoint: fixtures.langgraph_agent:graph

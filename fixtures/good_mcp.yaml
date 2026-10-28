@@ -1,0 +1,5 @@
+name: orderbot-good-mcp
+version: "1"
+adapter: mcp
+command: ["{python}", "-m", "fixtures.mcp_server"]
+tool: chat
