@@ -142,6 +142,38 @@ def compare(
         raise typer.Exit(1)
 
 
+@app.command()
+def redteam(
+    target: Path = typer.Option(..., help="Target YAML file."),
+    seeds: Path = typer.Option(Path("scenarios/library"), help="Seed scenarios."),
+    out: Path = typer.Option(Path("scenarios/generated"), help="Where new failing variants are written."),
+    rounds: int = typer.Option(2, min=1),
+    per_seed: int = typer.Option(4, min=1, help="Mutations tried per surviving scenario per round."),
+    seed: int = 0,
+    generator_llm: Optional[str] = typer.Option(None, help=f"Adds an LLM paraphrase mutator: {LLM_HELP}"),
+    report_out: Optional[Path] = typer.Option(None, help="Write the report JSON here."),
+):
+    """Mutate passing attack seeds; keep and save the variants that make the target fail."""
+    from .redteam import generate
+
+    sys.path.insert(0, str(Path.cwd()))
+    tgt = Target.load(target)
+    cfg = RunConfig(secrets=tgt.secrets)
+    report = asyncio.run(generate(build_agent(tgt), Scenario.load_dir(seeds), cfg, rounds, per_seed, seed,
+                                  build_llm(generator_llm)))
+    folder = out / tgt.name
+    folder.mkdir(parents=True, exist_ok=True)
+    for s in report.new_failures:
+        (folder / f"{s.id}.yaml").write_text(s.to_yaml(), encoding="utf-8", newline="\n")
+    data = report.as_dict()
+    typer.echo(f"seeds {data['seeds']} (already failing {data['seeds_already_failing']}), "
+               f"variants tried {data['variants_tried']}, new failures {data['new_failures']} -> {folder}")
+    for name, s in data["by_mutator"].items():
+        typer.echo(f"  {name:<12} {s['failed']}/{s['tried']}")
+    if report_out:
+        report_out.write_text(json.dumps(data, indent=2))
+
+
 @label_app.command("export")
 def label_export(
     run_id: str = typer.Option(..., "--run"),

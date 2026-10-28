@@ -36,8 +36,10 @@ def _run(agent, repeats=1):
 
 def test_all_adapters_give_identical_results(http_target):
     prints = {}
+    # Equivalence, not speed: MCP spawns a server per call, which is slow under load on Windows.
+    suite = [s.model_copy(update={"criteria": s.criteria.model_copy(update={"max_latency_s": None})}) for s in SUITE]
     for kind, target in _targets(http_target).items():
-        results = _run(build_agent(target))
+        results = asyncio.run(run_suite(build_agent(target), suite))
         assert summarize(results)["pass_rate"] == 1.0, kind
         # Only the in-process python adapter can observe @tool calls; compare conversations.
         prints[kind] = fingerprint([r.model_copy(update={"tool_calls": []}) for r in results])
