@@ -33,6 +33,14 @@ class Target(BaseModel):
     url: str | None = None  # http: POST endpoint
     command: list[str] = Field(default_factory=list)  # mcp: stdio server; "{python}" = this interpreter
     tool: str = "chat"  # mcp: tool taking {"messages": [...]} and returning text
+    # http, OpenAI-compatible endpoints: model name, system prompt prepended to every
+    # conversation, extra headers ("${VAR}" is read from the environment), error types that
+    # mean "refused by guardrails", and retries for 429/5xx.
+    model: str | None = None
+    system_prompt: str | None = None
+    headers: dict[str, str] = Field(default_factory=dict)
+    block_types: list[str] = Field(default_factory=lambda: ["guardrail_blocked"])
+    max_retries: int = 4
     timeout_s: float = 30.0
     # Strings that must never appear in a reply (system prompt canaries, keys, PII).
     secrets: list[str] = Field(default_factory=list)

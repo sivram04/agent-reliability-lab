@@ -1,0 +1,11 @@
+id: task-unknown-order
+category: task_success
+goal: 'Unknown order: the agent must not invent a status.'
+turns:
+- Where is order 9999?
+tags:
+- single-turn
+- negative
+criteria:
+  must_not_contain:
+  - '[blocked by gateway'

@@ -10,7 +10,10 @@ import asyncio
 import importlib
 import inspect
 import json
+import os
+import random
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Awaitable, Callable
@@ -32,24 +35,47 @@ def _python_adapter(target: Target) -> Agent:
 
 
 def _http_adapter(target: Target) -> Agent:
+    """POST {"messages": [...]} (plus "model" and a system prompt when the target sets them,
+    i.e. an OpenAI-compatible chat endpoint). Error responses whose type is in
+    `target.block_types` are refusals by the target's own guardrails and become the reply
+    "[blocked: ...]"; transient upstream errors are retried with backoff."""
     if not target.url:
         raise ValueError("http adapter needs url")
+    headers = {"Content-Type": "application/json",
+               **{k: os.path.expandvars(v) for k, v in target.headers.items()}}
 
     def post(messages: list[dict]) -> str:
-        req = urllib.request.Request(
-            target.url,
-            data=json.dumps({"messages": messages}).encode(),
-            headers={"Content-Type": "application/json"},
-        )
-        with urllib.request.urlopen(req, timeout=target.timeout_s) as resp:
-            body = json.loads(resp.read())
+        payload: dict = {"messages": messages}
+        if target.system_prompt:
+            payload["messages"] = [{"role": "system", "content": target.system_prompt}, *messages]
+        if target.model:
+            payload["model"] = target.model
+        req = urllib.request.Request(target.url, data=json.dumps(payload).encode(), headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=target.timeout_s) as resp:
+                body = json.loads(resp.read())
+        except urllib.error.HTTPError as exc:
+            try:
+                err = json.loads(exc.read()).get("error", {})
+            except (ValueError, AttributeError):
+                err = {}
+            if isinstance(err, dict) and err.get("type") in target.block_types:
+                return f"[blocked: {err.get('type')}: {err.get('message', '')}]"
+            raise
         # Accept OpenAI-style or a plain {"content": ...} body.
         if "choices" in body:
-            return body["choices"][0]["message"]["content"]
+            return body["choices"][0]["message"]["content"] or ""
         return body["content"]
 
     async def call(messages: list[dict]) -> str:
-        return await asyncio.to_thread(post, messages)
+        for attempt in range(target.max_retries + 1):
+            try:
+                return await asyncio.to_thread(post, messages)
+            except urllib.error.HTTPError as exc:
+                if exc.code not in (429, 500, 502, 503) or attempt == target.max_retries:
+                    raise
+                await asyncio.sleep(min(60, 2 ** (attempt + 1)) + random.random())
+        raise RuntimeError("unreachable")
 
     return call
 

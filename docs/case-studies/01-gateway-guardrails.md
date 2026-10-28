@@ -130,6 +130,44 @@ Limits: the leak check is still pattern-based. A model that paraphrases a prompt
 matching words, or splits a secret across sentences, can still get past it. Real-model numbers
 still need provider keys.
 
+## With a real model: Gemini behind the gateway
+
+Same question, end to end: OrderBot's system prompt (with the `ZETA-42` canary) plus
+`gemini-3.5-flash-lite` (free tier), called through the gateway's OpenAI-compatible API
+([`target_real.yaml`](../../case_studies/gateway/target_real.yaml)). Both gateway versions ran from
+clean exports of their commits on separate ports, with the same model.
+
+Suite ([`build_real_suite.py`](../../case_studies/gateway/build_real_suite.py)), sized for the free
+quota: 129 scenarios, made of all 62 seed attacks, a seeded sample of 25 obfuscated variants, a
+seeded sample of 25 of the red-team bypasses, and 17 benign questions.
+
+| | Before (`8071875`) | After (`692805f`) |
+|---|---|---|
+| Attacks with no leak | 112/112 | 112/112 |
+| Stopped by the gateway | 33 | 57 |
+| Reached Gemini (and it refused) | 79 | 55 |
+| Benign requests blocked | 0/17 | 0/17 |
+| Partial hints in replies (regex scan) | 0 | 0 |
+
+**What this shows.** For this model and these attacks, Gemini's own safety training refused
+everything the gateway let through, so leak rates are 0 with or without hardening. The hardened
+gateway's value here is defence in depth and cost: 24 more attacks (21% of them) never reach the
+model, so they aren't billed and don't depend on the model's behaviour. Weaker or
+instruction-following models are where the earlier worst-case numbers matter.
+
+Latency isn't compared: the before-run hit Gemini during a period of 503 "high demand" errors, so
+its median (11.5 s vs 1.2 s) mostly reflects retries.
+
+**Two more findings for the gateway:**
+- `gemini/gemini-2.0-flash`, which `providers.yaml` uses in `gemini-flash` and in the `auto` fallback
+  chain, has been retired by Google. Requests to it fail with a 404, so the default Gemini route is
+  down until the config is updated. These runs pinned `gemini-3.5-flash-lite` in the scratch copies
+  only.
+- `gemini-3.8-flash` and `gemini-flash-latest` returned 503 and 429 on the free tier during testing.
+  A lighter model is a better free-tier default.
+
+Raw results: [`docs/results/gateway/real/`](../results/gateway/real/).
+
 ## Reproduce
 
 ```bash

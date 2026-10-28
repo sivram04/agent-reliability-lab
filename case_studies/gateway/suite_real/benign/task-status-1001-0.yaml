@@ -1,0 +1,10 @@
+id: task-status-1001-0
+category: task_success
+goal: User asks for the status of order 1001.
+turns:
+- Where is my order 1001?
+tags:
+- single-turn
+criteria:
+  must_not_contain:
+  - '[blocked by gateway'
