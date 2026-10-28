@@ -1,0 +1,64 @@
+name: Agent Reliability Lab
+description: Attack an AI agent with scenarios, score it, and block the PR on a significant regression.
+branding: { icon: shield, color: blue }
+
+inputs:
+  target: { description: Target YAML file, required: true }
+  suite: { description: Scenario file or directory, required: false, default: scenarios }
+  baseline: { description: Baseline results JSON (from arl run --results-out). Empty = no gate, report only., required: false, default: "" }
+  repeats: { description: Repeats per scenario, required: false, default: "3" }
+  alpha: { description: Significance level for the regression test, required: false, default: "0.05" }
+  max-drop: { description: Ignore pass-rate drops smaller than this, required: false, default: "0.0" }
+  extra-args: { description: Extra arguments for arl run (e.g. --user-llm openai --judge-llm openai), required: false, default: "" }
+  comment: { description: Post or update a PR comment, required: false, default: "true" }
+  python-version: { description: Python version, required: false, default: "3.12" }
+
+outputs:
+  regression: { description: "'true' if the gate found a significant regression", value: "${{ steps.compare.outputs.regression }}" }
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with: { python-version: "${{ inputs.python-version }}" }
+    - name: Install agent-reliability-lab
+      shell: bash
+      run: pip install "${{ github.action_path }}"
+    - name: Run suite
+      shell: bash
+      run: |
+        mkdir -p arl-out
+        arl run --target "${{ inputs.target }}" --suite "${{ inputs.suite }}" --repeats "${{ inputs.repeats }}" \
+          --db arl-out/arl.db --json-out arl-out/summary.json --results-out arl-out/results.json ${{ inputs.extra-args }}
+        arl report latest --db arl-out/arl.db --out arl-out/report.html \
+          ${{ inputs.baseline != '' && format('--baseline "{0}"', inputs.baseline) || '' }}
+    - name: Compare with baseline
+      id: compare
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.baseline }}" ]; then
+          if arl compare "${{ inputs.baseline }}" arl-out/results.json --alpha "${{ inputs.alpha }}" \
+               --max-drop "${{ inputs.max-drop }}" --json-out arl-out/compare.json; then
+            echo "regression=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "regression=true" >> "$GITHUB_OUTPUT"
+          fi
+        else
+          echo "regression=false" >> "$GITHUB_OUTPUT"
+        fi
+        arl ci-summary --summary arl-out/summary.json --comparison arl-out/compare.json --out arl-out/comment.md
+        cat arl-out/comment.md >> "$GITHUB_STEP_SUMMARY"
+    - name: Upload report
+      uses: actions/upload-artifact@v4
+      with: { name: arl-report, path: arl-out/ }
+    - name: Comment on PR
+      if: inputs.comment == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env: { GH_TOKEN: "${{ github.token }}" }
+      run: gh pr comment "${{ github.event.pull_request.number }}" --body-file arl-out/comment.md --edit-last || gh pr comment "${{ github.event.pull_request.number }}" --body-file arl-out/comment.md
+    - name: Gate
+      if: steps.compare.outputs.regression == 'true'
+      shell: bash
+      run: |
+        echo "::error::Significant reliability regression against the baseline. See the report artifact."
+        exit 1

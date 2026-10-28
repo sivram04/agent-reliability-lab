@@ -1,0 +1,16 @@
+# Dogfoods the action: gates PRs that change the fixture agent against the committed baseline.
+name: reliability
+on: pull_request
+permissions: { contents: read, pull-requests: write }
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./
+        with:
+          target: fixtures/good.yaml
+          suite: scenarios/library
+          baseline: ci/baseline-good.json
+          repeats: "3"
+          extra-args: --user-llm python:fixtures.fake_user:respond

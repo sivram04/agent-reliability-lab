@@ -47,9 +47,9 @@ def _topic(text: str) -> str | None:
 
 # --- good -------------------------------------------------------------------
 
-def _status(order_id: str) -> str | None:
+def _status(order_id: str, attempts: int = 3) -> str | None:
     """Status, "missing" if the order does not exist, or None if the tool is unreliable now."""
-    for _ in range(3):  # retry transient failures, bounded
+    for _ in range(attempts):  # retry transient failures, bounded
         try:
             data = get_order(order_id=order_id)
         except KeyError:
@@ -63,6 +63,10 @@ def _status(order_id: str) -> str | None:
 
 
 def good_agent(messages: list[dict]) -> str:
+    return _good(messages, attempts=3)
+
+
+def _good(messages: list[dict], attempts: int) -> str:
     text = messages[-1]["content"].lower()
     if any(m in text for m in INJECTION_MARKERS) or "discount code" in text:
         return "Sorry, I can't help with that. I can check an order status for you."
@@ -77,7 +81,7 @@ def good_agent(messages: list[dict]) -> str:
         return "I don't have reliable policy information right now. Please check our help center."
     if match := re.search(r"\b\d{4}\b", text):
         oid = match.group()
-        status = _status(oid)
+        status = _status(oid, attempts)
         if status == "missing":
             return "I couldn't find that order. Can you share the order number?"
         if status is None:
@@ -86,6 +90,12 @@ def good_agent(messages: list[dict]) -> str:
     if "order" in text:
         return "I couldn't find that order. Can you share the order number?"
     return "I can help with order status. What's your order number?"
+
+
+def good_agent_v2(messages: list[dict]) -> str:
+    """A plausible bad refactor of good_agent: the retry loop was "simplified" away.
+    Used by the CI demo, where the gate must block it."""
+    return _good(messages, attempts=1)
 
 
 # --- naive guard --------------------------------------------------------------

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reliability report: {{ run.target }}@{{ run.version }}</title>
+{% include "_style.html.j2" %}
+</head>
+<body>
+<main>
+  <h1>{{ run.target }} <span class="sub">v{{ run.version }}</span></h1>
+  <p class="sub">Run <code>{{ run.id }}</code> · {{ run.created_at[:19] | replace("T", " ") }} UTC ·
+    {{ summary.runs }} scenario runs{% if run.suite %} · suite <code>{{ run.suite }}</code>{% endif %}</p>
+
+  <div class="cards">
+    {% for key, label in headline %}
+      {% set v = summary[key] %}
+      {% set lower = key in lower_is_better %}
+      <div class="card">
+        <div class="k">{{ label }}</div>
+        <div class="v {% if v is not none %}{% if (lower and v == 0) or (not lower and v >= 0.95) %}good{% elif (lower and v > 0.1) or (not lower and v < 0.8) %}bad{% else %}warn{% endif %}{% endif %}">{{ v | pct }}</div>
+        {% if key == "pass_rate" %}<div class="ci">95% CI {{ summary.pass_rate_ci95[0] | pct }} to {{ summary.pass_rate_ci95[1] | pct }}</div>{% endif %}
+      </div>
+    {% endfor %}
+    <div class="card"><div class="k">p95 latency</div><div class="v">{{ "%.2f" | format(summary.p95_latency_s) }}s</div></div>
+    <div class="card"><div class="k">Tool calls per run</div><div class="v">{{ "%.1f" | format(summary.tool_calls_per_run) }}</div></div>
+  </div>
+
+  <h2>By category</h2>
+  <div class="scroll"><table>
+    <tr><th>Category</th><th>Passed</th><th>Rate</th><th style="width:40%">95% CI</th></tr>
+    {% for c in categories %}
+    <tr><td>{{ c.category | replace("_", " ") }}</td><td>{{ c.passed }}/{{ c.runs }}</td><td>{{ c.rate | pct }}</td>
+      <td><div class="bar"><div class="fill" style="width:{{ (c.rate * 100) | round(1) }}%"></div>
+        <div class="ci" style="left:{{ (c.lo * 100) | round(1) }}%; width:{{ ((c.hi - c.lo) * 100) | round(1) }}%"></div></div></td></tr>
+    {% endfor %}
+  </table></div>
+
+  {% if comparison %}
+  <h2>Compared with baseline {% if comparison.regression %}<span class="bad">· regression</span>{% else %}<span class="good">· no significant regression</span>{% endif %}</h2>
+  <div class="scroll"><table>
+    <tr><th>Metric</th><th>Base</th><th>New</th><th>Delta</th><th>p</th></tr>
+    {% for row in comparison.rows %}
+    {% set lat = row.metric.startswith("latency") %}
+    <tr><td>{{ row.metric }}</td>
+      <td>{% if lat %}{{ "%.2f" | format(row.base) }}s{% else %}{{ row.base | pct }}{% endif %}</td>
+      <td>{% if lat %}{{ "%.2f" | format(row.new) }}s{% else %}{{ row.new | pct }}{% endif %}</td>
+      <td class="{% if row.regression %}bad{% endif %}">{% if lat %}{{ "%+.2f" | format(row.delta) }}s{% else %}{{ "%+.0f" | format(row.delta * 100) }} pts{% endif %}</td>
+      <td>{{ "%.3f" | format(row.p_value) }}</td></tr>
+    {% endfor %}
+  </table></div>
+  <p class="sub">One-sided Fisher exact test on pass counts (alpha {{ comparison.alpha }}). Latency: Mann-Whitney U, reported only.</p>
+  {% endif %}
+
+  <h2>Failing runs ({{ failures | length }})</h2>
+  {% if not failures %}<p class="sub">No failures.</p>{% endif %}
+  {% for f in failures %}
+  <details>
+    <summary><code>{{ f.r.scenario_id }}#{{ f.r.repeat }}</code>
+      <span class="tag">{{ f.r.category | replace("_", " ") }}</span>
+      {% if f.r.faults_fired %}<span class="tag">{{ f.r.faults_fired }} fault(s)</span>{% endif %}
+      <span class="tag">{{ f.r.stop_reason | replace("_", " ") }}</span>
+      <span class="bad">{{ f.r.error or (f.failed | map(attribute="name") | join(", ")) }}</span></summary>
+    {% if f.failed %}<div class="checks">{% for c in f.failed %}{{ c.name }}{% if c.detail %}: {{ c.detail }}{% endif %}<br>{% endfor %}</div>{% endif %}
+    <div class="steps">
+      {% for s in f.steps %}
+        {% if s.kind == "tool" %}
+        <div class="step tool"><span class="who">tool{% if s.fault %} · fault: {{ s.fault }}{% endif %}</span>{{ s.tool }}({{ s.args | tojson }}) → {{ s.outcome | tojson }}</div>
+        {% else %}
+        <div class="step {{ s.kind }}"><span class="who">{{ s.kind }}</span>{{ s.content }}</div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </details>
+  {% endfor %}
+
+  <p class="sub" style="margin-top:40px">Generated {{ generated }} by agent-reliability-lab.</p>
+</main>
+</body>
+</html>

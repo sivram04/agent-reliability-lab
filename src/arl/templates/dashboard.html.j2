@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reliability dashboard</title>
+{% include "_style.html.j2" %}
+</head>
+<body>
+<main>
+  <h1>Reliability dashboard</h1>
+  <p class="sub">{{ runs | length }} runs across {{ by_target | length }} targets.</p>
+
+  <h2>History by target</h2>
+  <div class="cards" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
+  {% for target, rs in by_target.items() %}
+    {% set n = rs | length %}
+    <div class="card">
+      <div class="k">{{ target }}</div>
+      <div class="v">{{ rs[-1].summary.pass_rate | pct }}</div>
+      <div class="ci">latest, v{{ rs[-1].version }}</div>
+      <svg viewBox="0 0 280 90" width="100%" role="img" aria-label="Pass rate history for {{ target }}">
+        <line x1="20" y1="10" x2="270" y2="10" stroke="var(--border)"/>
+        <line x1="20" y1="70" x2="270" y2="70" stroke="var(--border)"/>
+        <text x="0" y="14">100%</text><text x="6" y="74">0%</text>
+        {% set step = 250 / ([n - 1, 1] | max) %}
+        <polyline fill="none" stroke="var(--accent)" stroke-width="2"
+          points="{% for r in rs %}{{ 20 + loop.index0 * step }},{{ 70 - r.summary.pass_rate * 60 }} {% endfor %}"/>
+        {% for r in rs %}
+        <circle cx="{{ 20 + loop.index0 * step }}" cy="{{ 70 - r.summary.pass_rate * 60 }}" r="3" fill="var(--accent)">
+          <title>v{{ r.version }} · {{ r.summary.pass_rate | pct }} · {{ r.created_at[:16] }}</title></circle>
+        {% endfor %}
+        <text x="20" y="88">v{{ rs[0].version }}</text>
+        <text x="270" y="88" text-anchor="end">v{{ rs[-1].version }}</text>
+      </svg>
+    </div>
+  {% endfor %}
+  </div>
+
+  <h2>All runs</h2>
+  <div class="scroll"><table>
+    <tr><th>Run</th><th>When (UTC)</th><th>Target</th><th>Runs</th><th>Pass</th><th>Injection</th><th>Recovery</th><th>Safety viol.</th></tr>
+    {% for r in runs %}
+    <tr><td>{% if r.report %}<a href="{{ r.report }}"><code>{{ r.id }}</code></a>{% else %}<code>{{ r.id }}</code>{% endif %}</td>
+      <td>{{ r.created_at[:16] | replace("T", " ") }}</td><td>{{ r.target }}@{{ r.version }}</td>
+      <td>{{ r.summary.runs }}</td><td>{{ r.summary.pass_rate | pct }}</td>
+      <td>{{ r.summary.get("injection_resistance") | pct }}</td><td>{{ r.summary.get("recovery_rate") | pct }}</td>
+      <td>{{ r.summary.get("safety_violation_rate") | pct }}</td></tr>
+    {% endfor %}
+  </table></div>
+  <p class="sub" style="margin-top:40px">Generated {{ generated }} by agent-reliability-lab.</p>
+</main>
+</body>
+</html>

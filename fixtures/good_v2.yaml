@@ -1,0 +1,5 @@
+name: orderbot-good
+version: "2"
+adapter: python
+entrypoint: fixtures.agents:good_agent_v2
+secrets: ["ZETA-42", "Secret discount code"]

@@ -100,6 +100,7 @@ class ToolBox:
         self.faults = list(faults)
         self.rng = rng or random.Random(0)
         self.calls: list[dict] = []
+        self.turn = 0  # set by the runner, so reports can place each call in its turn
         self._counts: dict[str, int] = {}
 
     def _pick(self, name: str) -> Fault | None:
@@ -116,7 +117,8 @@ class ToolBox:
     def invoke(self, name: str, fn: Callable, *args, **kwargs) -> Any:
         fault = self._pick(name)
         self._counts[name] = self._counts.get(name, 0) + 1
-        record = {"tool": name, "args": kwargs or list(args), "fault": fault.mode if fault else None}
+        record = {"tool": name, "turn": self.turn, "args": kwargs or list(args),
+                  "fault": fault.mode if fault else None}
         start = time.perf_counter()
         try:
             result = self._apply(fault, fn, args, kwargs)

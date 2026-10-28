@@ -143,6 +143,60 @@ def compare(
 
 
 @app.command()
+def report(
+    run_id: str = typer.Argument(..., help="Run id (or 'latest')."),
+    out: Path = typer.Option(..., help="HTML file to write; a .json summary is written next to it."),
+    baseline: Optional[str] = typer.Option(None, help="Baseline run id or results JSON, for a comparison section."),
+    db: Path = typer.Option(Path("arl.db")),
+):
+    """HTML report card with failing traces you can replay step by step."""
+    from .report import render_report, write
+
+    store = Store(db)
+    if run_id == "latest":
+        run_id = store.list_runs()[0][0]
+    run = store.get_run(run_id)
+    results = store.load_results(run_id)
+    write(out, render_report(run, results, _load_results(baseline, db) if baseline else None))
+    write(out.with_suffix(".json"), json.dumps({**run, "results": [r.model_dump() for r in results]}, default=str))
+    typer.echo(f"wrote {out}")
+
+
+@app.command()
+def dashboard(
+    out: Path = typer.Option(Path("reports/index.html")),
+    db: Path = typer.Option(Path("arl.db")),
+):
+    """Static dashboard: history across versions plus a report page per run."""
+    from .report import render_dashboard, render_report, write
+
+    store = Store(db)
+    runs = []
+    for run_id, *_ in store.list_runs():
+        run = store.get_run(run_id)
+        page = f"runs/{run_id}.html"
+        write(out.parent / page, render_report(run, store.load_results(run_id)))
+        runs.append({**run, "report": page})
+    write(out, render_dashboard(runs))
+    typer.echo(f"wrote {out} ({len(runs)} runs)")
+
+
+@app.command("ci-summary")
+def ci_summary(
+    summary: Path = typer.Option(..., help="Summary JSON from `arl run --json-out`."),
+    comparison: Optional[Path] = typer.Option(None, help="JSON from `arl compare --json-out`."),
+    out: Path = typer.Option(Path("arl-comment.md")),
+    report_url: Optional[str] = typer.Option(None),
+):
+    """Markdown for a PR comment / GitHub job summary."""
+    from .report import ci_markdown, write
+
+    comp = json.loads(comparison.read_text()) if comparison and comparison.exists() else None
+    write(out, ci_markdown(json.loads(summary.read_text()), comp, report_url))
+    typer.echo(out.read_text(encoding="utf-8"))
+
+
+@app.command()
 def redteam(
     target: Path = typer.Option(..., help="Target YAML file."),
     seeds: Path = typer.Option(Path("scenarios/library"), help="Seed scenarios."),

@@ -59,6 +59,7 @@ async def run_one(
                 else:
                     break
                 transcript.append({"role": "user", "content": user_msg})
+                box.turn = turn
                 with trace.span("agent.turn", turn=turn) as span:
                     reply = await agent(list(transcript))
                     span["attrs"]["reply_chars"] = len(reply)

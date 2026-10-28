@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import math
 
-import numpy as np
-from scipy import stats as sps
-
 from .models import RunResult
+
+# numpy/scipy are imported inside the functions that need them: scipy.stats alone can
+# take seconds to import, and most CLI commands never touch it.
 
 
 def wilson_ci(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
@@ -29,6 +29,8 @@ def wilson_ci(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
 def bootstrap_ci(values: list[float], n_boot: int = 2000, alpha: float = 0.05, seed: int = 0) -> tuple[float, float]:
     if not values:
         return (0.0, 1.0)
+    import numpy as np
+
     arr = np.asarray(values, dtype=float)
     rng = np.random.default_rng(seed)
     means = rng.choice(arr, size=(n_boot, len(arr)), replace=True).mean(axis=1)
@@ -43,6 +45,9 @@ def _counts(results: list[RunResult], category: str | None = None) -> tuple[int,
 def compare(base: list[RunResult], new: list[RunResult], alpha: float = 0.05, max_drop: float = 0.0) -> dict:
     """Compare two runs. `regression` is True if any pass rate drops by more than
     `max_drop` with p < alpha (one-sided Fisher exact test)."""
+    import numpy as np
+    from scipy import stats as sps
+
     rows = []
     categories = sorted({r.category for r in base} | {r.category for r in new})
     for cat in [None, *categories]:
