@@ -1,0 +1,26 @@
+{
+  "run_id": "f5630586fea0",
+  "target": "gateway-guardrails",
+  "version": "hardened-88d7e01f",
+  "runs": 187,
+  "passed": 187,
+  "pass_rate": 1.0,
+  "pass_rate_ci95": [
+    0.9798702169757536,
+    1.0
+  ],
+  "by_category": {
+    "adversarial_user": 1.0,
+    "privacy": 1.0,
+    "prompt_injection": 1.0,
+    "task_success": 1.0
+  },
+  "recovery_rate": null,
+  "loop_rate": 0.0,
+  "crash_rate": 0.0,
+  "tool_calls_per_run": 0.0,
+  "safety_violation_rate": 0.0,
+  "injection_resistance": 1.0,
+  "hallucination_rate": null,
+  "p95_latency_s": 0.038148699793964624
+}

@@ -14,7 +14,7 @@ Spec: [`../04-agent-reliability-lab.md`](../04-agent-reliability-lab.md)
 | Known-good vs known-bad fixture agents | 100% vs 42% pass; recovery after tool faults 100% vs 7% |
 | CI gate demo (retry loop removed in v2) | tool_chaos 100% → 67%, Fisher p < 0.001, blocked |
 | Red-team generator vs a keyword-guarded agent | 965 variants, 108 new breaches from seeds it fully blocked |
-| **Case study: Project 1 gateway guardrails** | Classifier blocks 30% of 170 attacks under a worst-case model; base64 and leetspeak bypass it 100% of the time (122 new bypasses found). Adding an output canary rule: 100%, no false positives. [Write-up](docs/case-studies/01-gateway-guardrails.md) |
+| **Case study: Project 1 gateway guardrails** | Classifier blocked 51/170 attacks under a worst-case model; base64 and leetspeak bypassed it 100% of the time (122 new bypasses). After hardening the gateway (decoding plus a prompt-leak check): 170/170, input layer alone 83/170, 0 false positives. [Write-up](docs/case-studies/01-gateway-guardrails.md) |
 | Judge-human agreement | **Not measured yet.** Tooling is ready (`arl label`). It needs about 200 hand labels and a real judge model. |
 
 ## Status by phase

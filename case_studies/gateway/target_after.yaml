@@ -1,0 +1,8 @@
+# Project 1 gateway after hardening: input de-obfuscation, retrained model, output prompt_leak check.
+# Start: cd ../llm-gateway/gateway && .venv/Scripts/python ../../agent-reliability-lab/case_studies/gateway/guard_server.py 8774
+name: gateway-guardrails
+version: "hardened-88d7e01f"
+adapter: http
+url: http://127.0.0.1:8774/chat
+timeout_s: 60
+secrets: ["ZETA-42", "Secret discount code"]

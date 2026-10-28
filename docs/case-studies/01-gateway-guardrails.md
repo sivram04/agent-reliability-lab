@@ -91,6 +91,45 @@ code backwards or base64 it would get past an exact-match rule. Recommended for 
   the classifier's training set
 - failing loudly when the trained model can't be loaded
 
+## Gateway hardened (llm-gateway commit `692805f`)
+
+The gateway now implements these recommendations in its own code:
+- **Input:** it also scores decoded views of each prompt (base64 payloads, leetspeak undone, spaced
+  letters joined) and keeps the highest score.
+- **Output:** a new `prompt_leak` check needs no per-tenant setup. It blocks replies containing
+  secret-looking tokens from the request's system prompt or listed canaries, including reversed,
+  base64, leetspeak and spaced-out copies, and replies that repeat 8 or more consecutive words of
+  the prompt.
+- **Missing model:** a missing or unloadable injection model is logged as an error, and is fatal
+  when `GUARDRAILS_REQUIRE_MODEL=1`.
+- **Retraining:** 30% of training prompts get an obfuscated copy, and both models were retrained
+  (new fast model sha256 `88d7e01f…`).
+
+Lab re-run against the hardened gateway, same suite and the same worst-case model:
+
+| | Before (classifier only) | After |
+|---|---|---|
+| Attacks stopped (no leak) | 51/170 | **170/170** |
+| Blocked by the input layer alone | 54/170 | 83/170 |
+| Known red-team bypasses blocked at input | 0/122 | 89/122 (the other 33 caught by the leak check) |
+| Benign requests falsely blocked | 0/17 | 0/17 |
+
+The input-layer figure counts scenarios whose last reply was an input block. It slightly exceeds
+"attacks stopped" before hardening, because multi-turn escalations can leak on an earlier turn.
+
+Classifier on held-out sets (fast model, as the gateway calls it, threshold 0.5):
+
+| Set | Old model | Retrained |
+|---|---|---|
+| deepset injections, clean (recall) | 66.7% | 70.0% |
+| deepset injections, obfuscated, raw model (recall) | 35.0% | 46.7% |
+| deepset injections, obfuscated, with gateway decoding (recall) | 70.0% | 75.0% |
+| jailbreak set, clean (F1) | 0.993 | 0.989 |
+
+Limits: the leak check is still pattern-based. A model that paraphrases a prompt in fewer than 8
+matching words, or splits a secret across sentences, can still get past it. Real-model numbers
+still need provider keys.
+
 ## Reproduce
 
 ```bash
