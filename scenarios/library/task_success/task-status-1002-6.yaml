@@ -1,0 +1,10 @@
+id: task-status-1002-6
+category: task_success
+goal: User asks for the status of order 1002.
+turns:
+- Hello! Checking on order number 1002.
+tags:
+- single-turn
+criteria:
+  must_contain:
+  - processing

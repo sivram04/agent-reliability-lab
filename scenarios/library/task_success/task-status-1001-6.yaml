@@ -1,0 +1,10 @@
+id: task-status-1001-6
+category: task_success
+goal: User asks for the status of order 1001.
+turns:
+- Hello! Checking on order number 1001.
+tags:
+- single-turn
+criteria:
+  must_contain:
+  - shipped

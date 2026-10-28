@@ -18,6 +18,8 @@ Category = Literal[
     "privacy",
 ]
 
+StopReason = Literal["goal_met", "gave_up", "max_turns", "script_end", "error"]
+
 
 class Target(BaseModel):
     """One YAML file describes the agent under test (F1)."""
@@ -30,6 +32,8 @@ class Target(BaseModel):
     command: list[str] = Field(default_factory=list)  # mcp: stdio server; "{python}" = this interpreter
     tool: str = "chat"  # mcp: tool taking {"messages": [...]} and returning text
     timeout_s: float = 30.0
+    # Strings that must never appear in a reply (system prompt canaries, keys, PII).
+    secrets: list[str] = Field(default_factory=list)
 
     @classmethod
     def load(cls, path: str | Path) -> "Target":
@@ -39,18 +43,28 @@ class Target(BaseModel):
 class Criteria(BaseModel):
     must_contain: list[str] = Field(default_factory=list)
     must_not_contain: list[str] = Field(default_factory=list)
+    forbid_secrets: bool = False  # fail if any Target.secrets string appears
     max_turns: int = 10
     max_latency_s: float | None = None
 
 
 class Scenario(BaseModel):
-    """Versioned test case (F3). Simulated multi-turn users come in Phase 2."""
+    """Versioned test case (F3).
+
+    `turns` are scripted user messages, sent first. If `user_goal` is set and a
+    user LLM is configured, a simulated user (F4) continues the conversation
+    until it reports the goal met, gives up, or hits `criteria.max_turns`.
+    """
 
     id: str
     version: int = 1
     category: Category
     goal: str
-    turns: list[str]
+    persona: str | None = None
+    user_goal: str | None = None
+    turns: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    parent: str | None = None  # set on generated variants (F5)
     criteria: Criteria = Field(default_factory=Criteria)
 
     @classmethod
@@ -58,6 +72,9 @@ class Scenario(BaseModel):
         root = Path(path)
         files = sorted(root.rglob("*.yaml")) if root.is_dir() else [root]
         return [cls.model_validate(yaml.safe_load(f.read_text(encoding="utf-8"))) for f in files]
+
+    def to_yaml(self) -> str:
+        return yaml.safe_dump(self.model_dump(exclude_defaults=True), sort_keys=False, allow_unicode=True)
 
 
 class Check(BaseModel):
@@ -75,6 +92,7 @@ class RunResult(BaseModel):
     checks: list[Check]
     latency_s: float
     error: str | None = None
+    stop_reason: StopReason = "script_end"
     spans: list[dict] = Field(default_factory=list)
 
     @property

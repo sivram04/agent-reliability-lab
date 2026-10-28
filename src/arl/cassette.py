@@ -43,13 +43,14 @@ class Cassette:
         if mode == "replay":
             self.entries = json.loads(self.path.read_text(encoding="utf-8"))["entries"]
 
-    def wrap(self, agent: Agent) -> Agent:
+    def wrap(self, agent: Agent, namespace: str = "agent") -> Agent:
+        """Wrap the target agent, or any lab LLM (namespace "user", "judge", ...)."""
         if self.mode == "off":
             return agent
 
         async def call(messages: list[dict]) -> str:
             scenario_id, repeat, turn = call_context.get()
-            key = f"{scenario_id}#{repeat}#{turn}"
+            key = f"{namespace}:{scenario_id}#{repeat}#{turn}"
             digest = _digest(messages)
             if self.mode == "replay":
                 entry = self.entries.get(key)

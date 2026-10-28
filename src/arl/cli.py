@@ -12,8 +12,9 @@ import typer
 
 from .adapters import build_agent
 from .cassette import Cassette
+from .llm import build_llm
 from .models import Scenario, Target
-from .runner import run_suite, summarize
+from .runner import RunConfig, run_suite, summarize
 from .store import Store
 from .tracing import setup_otel, shutdown_otel
 
@@ -33,6 +34,9 @@ def run(
     cassette: Optional[Path] = typer.Option(None, help="Cassette file for record/replay."),
     record_mode: str = typer.Option("off", help="off | record | replay (needs --cassette)."),
     otel: Optional[str] = typer.Option(None, help="Export traces: console | otlp."),
+    user_llm: Optional[str] = typer.Option(
+        None, help="Simulated-user LLM: 'openai' (ARL_LLM_* env) or 'python:module:fn'."
+    ),
 ):
     """Run a scenario suite against a target agent."""
     sys.path.insert(0, str(Path.cwd()))
@@ -42,16 +46,21 @@ def run(
     tgt = Target.load(target)
     scenarios = Scenario.load_dir(suite) if suite else []
     tape = Cassette(cassette, record_mode) if cassette else None
-    # Replay never builds the real agent, so it works without the target's server or keys.
-    agent = tape.wrap(None) if record_mode == "replay" else build_agent(tgt)
-    if tape and record_mode == "record":
+    replay = record_mode == "replay"
+    # Replay never builds the real agent or LLMs, so it works offline.
+    agent = None if replay else build_agent(tgt)
+    user = None if replay else build_llm(user_llm)
+    if tape:
         agent = tape.wrap(agent)
-    results = asyncio.run(run_suite(agent, scenarios, repeats, seed, concurrency))
+        if user_llm:
+            user = tape.wrap(user, "user")
+    cfg = RunConfig(repeats=repeats, seed=seed, concurrency=concurrency, user_llm=user, secrets=tgt.secrets)
+    results = asyncio.run(run_suite(agent, scenarios, cfg=cfg))
     if tape:
         tape.save()
     shutdown_otel()
     summary = summarize(results)
-    run_id = Store(db).save_run(tgt, results, summary)
+    run_id = Store(db).save_run(tgt, results, summary, str(suite or ""))
 
     typer.echo(f"run {run_id}  target={tgt.name}@{tgt.version}  scenarios={len(scenarios)}")
     for r in results:

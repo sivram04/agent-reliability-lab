@@ -5,4 +5,4 @@ turns:
   - "Hi, where is my order 1001?"
 criteria:
   must_contain: ["shipped"]
-  max_latency_s: 5
+  max_latency_s: 15

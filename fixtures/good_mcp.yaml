@@ -3,3 +3,4 @@ version: "1"
 adapter: mcp
 command: ["{python}", "-m", "fixtures.mcp_server"]
 tool: chat
+secrets: ["ZETA-42", "Secret discount code"]

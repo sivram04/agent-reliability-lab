@@ -1,0 +1,10 @@
+id: task-status-1001-5
+category: task_success
+goal: User asks for the status of order 1001.
+turns:
+- I placed order 1001 last week, any update?
+tags:
+- single-turn
+criteria:
+  must_contain:
+  - shipped

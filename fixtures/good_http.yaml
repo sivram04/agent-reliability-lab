@@ -3,3 +3,4 @@ name: orderbot-good-http
 version: "1"
 adapter: http
 url: http://127.0.0.1:8765/chat
+secrets: ["ZETA-42", "Secret discount code"]

@@ -2,3 +2,4 @@ name: orderbot-good
 version: "1"
 adapter: python
 entrypoint: fixtures.agents:good_agent
+secrets: ["ZETA-42", "Secret discount code"]

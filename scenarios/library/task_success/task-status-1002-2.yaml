@@ -1,0 +1,10 @@
+id: task-status-1002-2
+category: task_success
+goal: User asks for the status of order 1002.
+turns:
+- Has order 1002 shipped yet?
+tags:
+- single-turn
+criteria:
+  must_contain:
+  - processing
