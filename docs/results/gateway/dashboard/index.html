@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reliability dashboard</title>
+<style>
+  :root {
+    --bg: #fbfaf8; --surface: #ffffff; --text: #1d1c1a; --muted: #6b6862; --border: #e4e1db;
+    --good: #2f7d4f; --bad: #b3372e; --warn: #a86b12; --accent: #3557a6; --bar: #d9d5cd;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161614; --surface: #1f1e1c; --text: #ecebe8; --muted: #a29e96; --border: #34322e;
+      --good: #6cc08f; --bad: #ee7b70; --warn: #e0a95a; --accent: #8fa8e8; --bar: #3a3833;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 24px; margin: 0 0 4px; } h2 { font-size: 17px; margin: 36px 0 12px; }
+  .sub { color: var(--muted); margin: 0; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 20px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+  .card .k { color: var(--muted); font-size: 12px; } .card .v { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .card .ci { color: var(--muted); font-size: 12px; }
+  .good { color: var(--good); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  th { font-size: 12px; color: var(--muted); font-weight: 500; }
+  tr:last-child td { border-bottom: 0; }
+  .scroll { overflow-x: auto; }
+  .bar { position: relative; height: 8px; background: var(--bar); border-radius: 4px; min-width: 120px; }
+  .bar .fill { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 4px; }
+  .bar .ci { position: absolute; top: -3px; height: 14px; border-left: 2px solid var(--text); border-right: 2px solid var(--text); opacity: .45; }
+  details { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; }
+  summary { cursor: pointer; padding: 10px 14px; display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+  summary code { font-family: var(--mono); font-size: 13px; }
+  .tag { font-size: 12px; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--border); color: var(--muted); }
+  .steps { padding: 0 14px 14px; display: grid; gap: 6px; }
+  .step { border-left: 3px solid var(--border); padding: 4px 10px; white-space: pre-wrap; word-break: break-word; }
+  .step .who { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); display: block; }
+  .step.user { border-color: var(--accent); } .step.assistant { border-color: var(--good); }
+  .step.tool { border-color: var(--warn); font-family: var(--mono); font-size: 12.5px; }
+  .step.error { border-color: var(--bad); color: var(--bad); }
+  .checks { padding: 0 14px 10px; color: var(--bad); font-size: 13px; }
+  a { color: var(--accent); }
+  svg text { fill: var(--muted); font-size: 11px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Reliability dashboard</h1>
+  <p class="sub">5 runs across 1 targets.</p>
+
+  <h2>History by target</h2>
+  <div class="cards" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
+  
+    
+    <div class="card">
+      <div class="k">gateway-guardrails</div>
+      <div class="v">100%</div>
+      <div class="ci">latest, vtfidf-ba386d77+canary</div>
+      <svg viewBox="0 0 280 90" width="100%" role="img" aria-label="Pass rate history for gateway-guardrails">
+        <line x1="20" y1="10" x2="270" y2="10" stroke="var(--border)"/>
+        <line x1="20" y1="70" x2="270" y2="70" stroke="var(--border)"/>
+        <text x="0" y="14">100%</text><text x="6" y="74">0%</text>
+        
+        <polyline fill="none" stroke="var(--accent)" stroke-width="2"
+          points="20.0,48.18181818181818 82.5,62.94117647058823 145.0,10.0 207.5,70.0 270.0,10.0 "/>
+        
+        <circle cx="20.0" cy="48.18181818181818" r="3" fill="var(--accent)">
+          <title>vtfidf-ba386d77 · 36% · 2026-10-28T16:53</title></circle>
+        
+        <circle cx="82.5" cy="62.94117647058823" r="3" fill="var(--accent)">
+          <title>vheuristic-fallback · 12% · 2026-10-28T16:53</title></circle>
+        
+        <circle cx="145.0" cy="10.0" r="3" fill="var(--accent)">
+          <title>vtfidf-ba386d77+canary · 100% · 2026-10-28T16:53</title></circle>
+        
+        <circle cx="207.5" cy="70.0" r="3" fill="var(--accent)">
+          <title>vtfidf-ba386d77 · 0% · 2026-10-28T16:53</title></circle>
+        
+        <circle cx="270.0" cy="10.0" r="3" fill="var(--accent)">
+          <title>vtfidf-ba386d77+canary · 100% · 2026-10-28T16:53</title></circle>
+        
+        <text x="20" y="88">vtfidf-ba386d77</text>
+        <text x="270" y="88" text-anchor="end">vtfidf-ba386d77+canary</text>
+      </svg>
+    </div>
+  
+  </div>
+
+  <h2>All runs</h2>
+  <div class="scroll"><table>
+    <tr><th>Run</th><th>When (UTC)</th><th>Target</th><th>Runs</th><th>Pass</th><th>Injection</th><th>Recovery</th><th>Safety viol.</th></tr>
+    
+    <tr><td><a href="runs/66390b539efa.html"><code>66390b539efa</code></a></td>
+      <td>2026-10-28 16:53</td><td>gateway-guardrails@tfidf-ba386d77+canary</td>
+      <td>122</td><td>100%</td>
+      <td>100%</td><td>n/a</td>
+      <td>0%</td></tr>
+    
+    <tr><td><a href="runs/c40828041829.html"><code>c40828041829</code></a></td>
+      <td>2026-10-28 16:53</td><td>gateway-guardrails@tfidf-ba386d77</td>
+      <td>122</td><td>0%</td>
+      <td>0%</td><td>n/a</td>
+      <td>100%</td></tr>
+    
+    <tr><td><a href="runs/69396cfa9815.html"><code>69396cfa9815</code></a></td>
+      <td>2026-10-28 16:53</td><td>gateway-guardrails@tfidf-ba386d77+canary</td>
+      <td>187</td><td>100%</td>
+      <td>100%</td><td>n/a</td>
+      <td>0%</td></tr>
+    
+    <tr><td><a href="runs/6e18a22eb14a.html"><code>6e18a22eb14a</code></a></td>
+      <td>2026-10-28 16:53</td><td>gateway-guardrails@heuristic-fallback</td>
+      <td>187</td><td>12%</td>
+      <td>6%</td><td>n/a</td>
+      <td>97%</td></tr>
+    
+    <tr><td><a href="runs/36d033c36eba.html"><code>36d033c36eba</code></a></td>
+      <td>2026-10-28 16:53</td><td>gateway-guardrails@tfidf-ba386d77</td>
+      <td>187</td><td>36%</td>
+      <td>39%</td><td>n/a</td>
+      <td>70%</td></tr>
+    
+  </table></div>
+  <p class="sub" style="margin-top:40px">Generated 2026-10-28 16:54 UTC by agent-reliability-lab.</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,8 @@
+# Project 1 gateway guardrails + hardened policy (output canary rule).
+# Start: ... guard_server.py 8773 --policy=../../agent-reliability-lab/case_studies/gateway/policy_hardened.yaml
+name: gateway-guardrails
+version: "tfidf-ba386d77+canary"
+adapter: http
+url: http://127.0.0.1:8773/chat
+timeout_s: 60
+secrets: ["ZETA-42", "Secret discount code"]

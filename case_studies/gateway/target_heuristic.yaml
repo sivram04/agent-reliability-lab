@@ -1,0 +1,8 @@
+# Same, with the regex fallback the gateway uses when no trained model is present.
+# Start: ... guard_server.py 8772 --heuristic
+name: gateway-guardrails
+version: "heuristic-fallback"
+adapter: http
+url: http://127.0.0.1:8772/chat
+timeout_s: 60
+secrets: ["ZETA-42", "Secret discount code"]

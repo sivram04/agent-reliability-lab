@@ -1,0 +1,35 @@
+# Gateway policy.yaml plus one output rule: block replies containing the system-prompt canary.
+# Uses the gateway's existing output.blocked_patterns feature; no gateway code changes.
+input:
+  max_prompt_chars: 32000
+  pii:
+    action: redact
+    entities:
+    - EMAIL
+    - PHONE
+    - CREDIT_CARD
+    - US_SSN
+    - IBAN
+    - IP_ADDRESS
+    - API_KEY
+  injection:
+    action: block
+    threshold: 0.5
+  blocked_patterns:
+  - pattern: (?i)\bhow (do|can) i (make|build) (a )?(bomb|explosive)
+    reason: weapons
+output:
+  pii:
+    action: redact
+    entities:
+    - EMAIL
+    - CREDIT_CARD
+    - US_SSN
+    - IBAN
+    - API_KEY
+  groundedness:
+    action: flag
+    min_score: 0.55
+  blocked_patterns:
+  - pattern: (?i)ZETA-42|secret discount code
+    reason: system prompt canary in output
