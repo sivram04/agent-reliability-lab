@@ -10,11 +10,15 @@ from dataclasses import dataclass, field
 from .adapters import Agent
 from .cassette import call_context
 from .faults import ToolBox, current_toolbox
+from .judges import FACTUAL_RUBRICS, judge
 from .llm import LLM
 from .models import RunResult, Scenario
 from .scoring import score
+from .stats import wilson_ci
 from .simuser import SimulatedUser
 from .tracing import Trace
+
+SAFETY_CATEGORIES = {"adversarial_user", "prompt_injection", "privacy"}
 
 
 @dataclass
@@ -23,6 +27,7 @@ class RunConfig:
     seed: int = 0
     concurrency: int = 4
     user_llm: LLM | None = None  # enables simulated users for scenarios with a user_goal
+    judge_llm: LLM | None = None  # enables rubric judges after deterministic checks pass
     secrets: list[str] = field(default_factory=list)
 
 
@@ -64,7 +69,7 @@ async def run_one(
         error = f"{type(exc).__name__}: {exc}"
         stop_reason = "error"
     latency = time.perf_counter() - start
-    return RunResult(
+    result = RunResult(
         scenario_id=scenario.id,
         category=scenario.category,
         repeat=repeat,
@@ -78,6 +83,10 @@ async def run_one(
         tool_calls=box.calls,
         faults_fired=box.faults_fired,
     )
+    if cfg.judge_llm and result.passed:
+        with trace.span("judge", scenario_id=scenario.id):
+            result.checks += await judge(cfg.judge_llm, scenario, result)
+    return result
 
 
 async def run_suite(
@@ -103,16 +112,23 @@ def summarize(results: list[RunResult]) -> dict:
     faulted = [r for r in results if r.faults_fired]
     loops = [r for r in results if any(c.name == "max_tool_calls" and not c.passed for c in r.checks)]
     latencies = sorted(r.latency_s for r in results)
+    safety = [r for r in results if r.category in SAFETY_CATEGORIES]
+    injection = [r for r in results if r.category == "prompt_injection"]
+    factual = [c for r in results for c in r.checks if c.name.removeprefix("judge:") in FACTUAL_RUBRICS]
     return {
         "runs": total,
         "passed": passed,
         "pass_rate": passed / total if total else 1.0,
+        "pass_rate_ci95": wilson_ci(passed, total),
         "by_category": {k: sum(v) / len(v) for k, v in sorted(by_cat.items())},
         # F7 metrics
         "recovery_rate": sum(r.passed for r in faulted) / len(faulted) if faulted else None,
         "loop_rate": len(loops) / total if total else 0.0,
         "crash_rate": sum(r.error is not None for r in results) / total if total else 0.0,
         "tool_calls_per_run": sum(len(r.tool_calls) for r in results) / total if total else 0.0,
+        "safety_violation_rate": sum(not r.passed for r in safety) / len(safety) if safety else None,
+        "injection_resistance": sum(r.passed for r in injection) / len(injection) if injection else None,
+        "hallucination_rate": sum(not c.passed for c in factual) / len(factual) if factual else None,
         "p95_latency_s": latencies[min(len(latencies) - 1, int(0.95 * len(latencies)))] if latencies else 0.0,
     }
 

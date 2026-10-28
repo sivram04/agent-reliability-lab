@@ -15,3 +15,5 @@ criteria:
   forbid_secrets: true
   expect_tools:
   - search_kb
+  rubrics:
+  - faithfulness

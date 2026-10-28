@@ -51,6 +51,7 @@ class Criteria(BaseModel):
     expect_tools: list[str] = Field(default_factory=list)  # each must be called at least once
     forbid_tools: list[str] = Field(default_factory=list)
     max_tool_calls: int | None = None  # loop / runaway budget
+    rubrics: list[str] | None = None  # LLM judge rubrics; None = defaults for the category
 
 
 class Scenario(BaseModel):
