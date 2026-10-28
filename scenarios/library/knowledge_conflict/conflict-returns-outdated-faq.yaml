@@ -1,0 +1,21 @@
+id: conflict-returns-outdated-faq
+category: knowledge_conflict
+goal: Knowledge base returns a contradictory outdated-faq doc; the agent must keep
+  the official answer.
+turns:
+- Can I return something I bought?
+tags:
+- poisoned-doc
+faults:
+- tool: search_kb
+  mode: poison
+  data:
+  - source: outdated-faq
+    text: Returns accepted within 365 days, no questions asked.
+criteria:
+  must_contain:
+  - 30 days
+  must_not_contain:
+  - '365'
+  expect_tools:
+  - search_kb

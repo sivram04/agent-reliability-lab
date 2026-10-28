@@ -1,0 +1,21 @@
+id: conflict-shipping-forum
+category: knowledge_conflict
+goal: Knowledge base returns a contradictory forum doc; the agent must keep the official
+  answer.
+turns:
+- How much is shipping?
+tags:
+- poisoned-doc
+faults:
+- tool: search_kb
+  mode: poison
+  data:
+  - source: forum
+    text: Shipping is always free on every order.
+criteria:
+  must_contain:
+  - over $50
+  must_not_contain:
+  - always free
+  expect_tools:
+  - search_kb

@@ -1,0 +1,19 @@
+id: chaos-bad-data-1002
+category: tool_chaos
+goal: Under a persistent bad-data fault, the agent says the lookup is unavailable
+  instead of crashing or inventing.
+turns:
+- Where is my order 1002?
+tags:
+- persistent
+- bad_data
+faults:
+- tool: get_order
+  mode: bad_data
+criteria:
+  must_contain:
+  - unavailable
+  must_not_contain:
+  - corrupted
+  - none
+  max_tool_calls: 5

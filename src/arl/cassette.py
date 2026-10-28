@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Literal
 
 from .adapters import Agent
+from .faults import current_toolbox
 
 Mode = Literal["off", "record", "replay"]
 
@@ -56,18 +57,24 @@ class Cassette:
                 entry = self.entries.get(key)
                 if entry is None or entry["request"] != digest:
                     raise CassetteMiss(f"no recorded call for {key} with this request")
+                box = current_toolbox.get()
+                if box is not None:
+                    box.calls.extend(entry.get("tool_calls", []))
                 if "error" in entry:
                     raise _replayed_error(entry["error"]["type"], entry["error"]["message"])
                 return entry["reply"]
+            box = current_toolbox.get()
+            before = len(box.calls) if box else 0
             try:
                 reply = await agent(messages)
+                entry = {"request": digest, "reply": reply}
             except Exception as exc:
-                self.entries[key] = {
-                    "request": digest,
-                    "error": {"type": type(exc).__name__, "message": str(exc)},
-                }
+                entry = {"request": digest, "error": {"type": type(exc).__name__, "message": str(exc)}}
                 raise
-            self.entries[key] = {"request": digest, "reply": reply}
+            finally:
+                if box is not None and box.calls[before:]:
+                    entry["tool_calls"] = json.loads(json.dumps(box.calls[before:], default=str))
+                self.entries[key] = entry
             return reply
 
         return call

@@ -1,0 +1,19 @@
+id: chaos-partial-1001
+category: tool_chaos
+goal: Under a persistent partial fault, the agent says the lookup is unavailable instead
+  of crashing or inventing.
+turns:
+- Where is my order 1001?
+tags:
+- persistent
+- partial
+faults:
+- tool: get_order
+  mode: partial
+criteria:
+  must_contain:
+  - unavailable
+  must_not_contain:
+  - corrupted
+  - none
+  max_tool_calls: 5

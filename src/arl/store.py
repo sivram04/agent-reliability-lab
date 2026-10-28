@@ -15,7 +15,7 @@ RUN_COLS = {"id": "TEXT PRIMARY KEY", "target": "TEXT", "version": "TEXT", "crea
 RESULT_COLS = {
     "run_id": "TEXT", "scenario_id": "TEXT", "category": "TEXT", "repeat": "INTEGER",
     "seed": "INTEGER", "passed": "INTEGER", "latency_s": "REAL", "error": "TEXT", "checks": "TEXT",
-    "transcript": "TEXT", "spans": "TEXT", "stop_reason": "TEXT",
+    "transcript": "TEXT", "spans": "TEXT", "stop_reason": "TEXT", "tool_calls": "TEXT", "faults_fired": "INTEGER",
 }
 
 
@@ -47,7 +47,8 @@ class Store:
                         run_id, r.scenario_id, r.category, r.repeat, r.seed, int(r.passed),
                         r.latency_s, r.error,
                         json.dumps([c.model_dump() for c in r.checks]), json.dumps(r.transcript),
-                        json.dumps(r.spans), r.stop_reason,
+                        json.dumps(r.spans), r.stop_reason, json.dumps(r.tool_calls, default=str),
+                        r.faults_fired,
                     )
                     for r in results
                 ],
@@ -82,6 +83,7 @@ class Store:
                 checks=[Check(**c) for c in json.loads(d["checks"])],
                 transcript=json.loads(d["transcript"]), spans=json.loads(d["spans"] or "[]"),
                 stop_reason=d["stop_reason"] or "script_end",
+                tool_calls=json.loads(d["tool_calls"] or "[]"), faults_fired=d["faults_fired"] or 0,
             ))
         return out
 

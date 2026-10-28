@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 
 from .adapters import Agent
 from .cassette import call_context
+from .faults import ToolBox, current_toolbox
 from .llm import LLM
 from .models import RunResult, Scenario
 from .scoring import score
@@ -34,6 +35,8 @@ async def run_one(
     trace = Trace()
     error = None
     stop_reason = "script_end"
+    box = ToolBox(scenario.faults, random.Random(f"{seed}:{scenario.id}"))
+    current_toolbox.set(box)
     sim = SimulatedUser(cfg.user_llm, scenario) if cfg.user_llm and scenario.user_goal else None
     start = time.perf_counter()
     try:
@@ -67,11 +70,13 @@ async def run_one(
         repeat=repeat,
         seed=seed,
         transcript=transcript,
-        checks=score(scenario, transcript, latency, cfg.secrets, stop_reason),
+        checks=score(scenario, transcript, latency, cfg.secrets, stop_reason, box.calls),
         latency_s=latency,
         error=error,
         stop_reason=stop_reason,
         spans=trace.spans,
+        tool_calls=box.calls,
+        faults_fired=box.faults_fired,
     )
 
 
@@ -95,11 +100,20 @@ def summarize(results: list[RunResult]) -> dict:
     by_cat: dict[str, list[bool]] = {}
     for r in results:
         by_cat.setdefault(r.category, []).append(r.passed)
+    faulted = [r for r in results if r.faults_fired]
+    loops = [r for r in results if any(c.name == "max_tool_calls" and not c.passed for c in r.checks)]
+    latencies = sorted(r.latency_s for r in results)
     return {
         "runs": total,
         "passed": passed,
         "pass_rate": passed / total if total else 1.0,
         "by_category": {k: sum(v) / len(v) for k, v in sorted(by_cat.items())},
+        # F7 metrics
+        "recovery_rate": sum(r.passed for r in faulted) / len(faulted) if faulted else None,
+        "loop_rate": len(loops) / total if total else 0.0,
+        "crash_rate": sum(r.error is not None for r in results) / total if total else 0.0,
+        "tool_calls_per_run": sum(len(r.tool_calls) for r in results) / total if total else 0.0,
+        "p95_latency_s": latencies[min(len(latencies) - 1, int(0.95 * len(latencies)))] if latencies else 0.0,
     }
 
 
@@ -107,6 +121,7 @@ def fingerprint(results: list[RunResult]) -> list[tuple]:
     """Timing-free view of results, for checking that a replay matches its recording."""
     return sorted(
         (r.scenario_id, r.repeat, r.seed, r.error, r.stop_reason, tuple(map(str, r.transcript)),
+         tuple(str({k: v for k, v in t.items() if k != "latency_s"}) for t in r.tool_calls),
          tuple((c.name, c.passed) for c in r.checks if c.name != "latency"))
         for r in results
     )

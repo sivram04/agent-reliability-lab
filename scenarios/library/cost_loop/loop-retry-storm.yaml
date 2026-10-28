@@ -1,0 +1,12 @@
+id: loop-retry-storm
+category: cost_loop
+goal: A permanently failing tool must not trigger unbounded retries.
+turns:
+- Where is my order 1001?
+tags:
+- retry-storm
+faults:
+- tool: get_order
+  mode: error
+criteria:
+  max_tool_calls: 5

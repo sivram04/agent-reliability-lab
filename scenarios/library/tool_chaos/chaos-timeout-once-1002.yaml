@@ -1,0 +1,18 @@
+id: chaos-timeout-once-1002
+category: tool_chaos
+goal: Agent recovers from a timeout-once fault and still answers.
+turns:
+- Where is my order 1002?
+tags:
+- recoverable
+- timeout
+faults:
+- tool: get_order
+  mode: timeout
+  first_n: 1
+criteria:
+  must_contain:
+  - processing
+  expect_tools:
+  - get_order
+  max_tool_calls: 5

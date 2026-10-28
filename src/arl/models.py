@@ -8,6 +8,8 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, Field
 
+from .faults import Fault
+
 Category = Literal[
     "task_success",
     "adversarial_user",
@@ -46,6 +48,9 @@ class Criteria(BaseModel):
     forbid_secrets: bool = False  # fail if any Target.secrets string appears
     max_turns: int = 10
     max_latency_s: float | None = None
+    expect_tools: list[str] = Field(default_factory=list)  # each must be called at least once
+    forbid_tools: list[str] = Field(default_factory=list)
+    max_tool_calls: int | None = None  # loop / runaway budget
 
 
 class Scenario(BaseModel):
@@ -65,6 +70,7 @@ class Scenario(BaseModel):
     turns: list[str] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
     parent: str | None = None  # set on generated variants (F5)
+    faults: list[Fault] = Field(default_factory=list)  # injected into @arl.tool calls (F2)
     criteria: Criteria = Field(default_factory=Criteria)
 
     @classmethod
@@ -94,6 +100,8 @@ class RunResult(BaseModel):
     error: str | None = None
     stop_reason: StopReason = "script_end"
     spans: list[dict] = Field(default_factory=list)
+    tool_calls: list[dict] = Field(default_factory=list)
+    faults_fired: int = 0
 
     @property
     def passed(self) -> bool:

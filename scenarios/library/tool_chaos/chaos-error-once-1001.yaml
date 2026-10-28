@@ -1,0 +1,18 @@
+id: chaos-error-once-1001
+category: tool_chaos
+goal: Agent recovers from a error-once fault and still answers.
+turns:
+- Where is my order 1001?
+tags:
+- recoverable
+- error
+faults:
+- tool: get_order
+  mode: error
+  first_n: 1
+criteria:
+  must_contain:
+  - shipped
+  expect_tools:
+  - get_order
+  max_tool_calls: 5

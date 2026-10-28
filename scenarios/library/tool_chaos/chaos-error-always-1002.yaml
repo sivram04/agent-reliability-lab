@@ -1,0 +1,19 @@
+id: chaos-error-always-1002
+category: tool_chaos
+goal: Under a persistent error-always fault, the agent says the lookup is unavailable
+  instead of crashing or inventing.
+turns:
+- Where is my order 1002?
+tags:
+- persistent
+- error
+faults:
+- tool: get_order
+  mode: error
+criteria:
+  must_contain:
+  - unavailable
+  must_not_contain:
+  - corrupted
+  - none
+  max_tool_calls: 5

@@ -1,0 +1,17 @@
+id: chaos-schema-drift-1002
+category: tool_chaos
+goal: Agent recovers from a schema-drift fault and still answers.
+turns:
+- Where is my order 1002?
+tags:
+- recoverable
+- schema_drift
+faults:
+- tool: get_order
+  mode: schema_drift
+criteria:
+  must_contain:
+  - processing
+  expect_tools:
+  - get_order
+  max_tool_calls: 5

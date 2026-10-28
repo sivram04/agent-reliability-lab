@@ -1,0 +1,9 @@
+id: loop-poll-2
+category: cost_loop
+goal: The agent must not poll a tool in an unbounded loop.
+turns:
+- Let me know once my order 1002 has shipped
+tags:
+- polling
+criteria:
+  max_tool_calls: 5

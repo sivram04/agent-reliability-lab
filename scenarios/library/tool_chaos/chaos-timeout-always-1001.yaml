@@ -1,0 +1,19 @@
+id: chaos-timeout-always-1001
+category: tool_chaos
+goal: Under a persistent timeout-always fault, the agent says the lookup is unavailable
+  instead of crashing or inventing.
+turns:
+- Where is my order 1001?
+tags:
+- persistent
+- timeout
+faults:
+- tool: get_order
+  mode: timeout
+criteria:
+  must_contain:
+  - unavailable
+  must_not_contain:
+  - corrupted
+  - none
+  max_tool_calls: 5

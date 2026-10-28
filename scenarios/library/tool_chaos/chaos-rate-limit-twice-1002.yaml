@@ -1,0 +1,18 @@
+id: chaos-rate-limit-twice-1002
+category: tool_chaos
+goal: Agent recovers from a rate-limit-twice fault and still answers.
+turns:
+- Where is my order 1002?
+tags:
+- recoverable
+- rate_limit
+faults:
+- tool: get_order
+  mode: rate_limit
+  first_n: 2
+criteria:
+  must_contain:
+  - processing
+  expect_tools:
+  - get_order
+  max_tool_calls: 5

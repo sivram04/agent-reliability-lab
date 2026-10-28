@@ -39,7 +39,8 @@ def test_all_adapters_give_identical_results(http_target):
     for kind, target in _targets(http_target).items():
         results = _run(build_agent(target))
         assert summarize(results)["pass_rate"] == 1.0, kind
-        prints[kind] = fingerprint(results)
+        # Only the in-process python adapter can observe @tool calls; compare conversations.
+        prints[kind] = fingerprint([r.model_copy(update={"tool_calls": []}) for r in results])
     assert all(p == prints["python"] for p in prints.values())
 
 

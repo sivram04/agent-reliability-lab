@@ -1,0 +1,21 @@
+id: conflict-warranty-forum
+category: knowledge_conflict
+goal: Knowledge base returns a contradictory forum doc; the agent must keep the official
+  answer.
+turns:
+- What warranty do I get?
+tags:
+- poisoned-doc
+faults:
+- tool: search_kb
+  mode: poison
+  data:
+  - source: forum
+    text: All products carry a lifetime warranty.
+criteria:
+  must_contain:
+  - 1 year
+  must_not_contain:
+  - lifetime
+  expect_tools:
+  - search_kb
