@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Agent Reliability Lab</title>
+<link rel="stylesheet" href="static/app.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23ff5a1f'/%3E%3Cpath d='M8 22V10h4l4 7 4-7h4v12' fill='none' stroke='%23fff' stroke-width='3'/%3E%3C/svg%3E">
+</head>
+<body>
+<!--
+THESIS: every test run is an investigation file: verdict first, then probable causes with the exact attack and
+reply beside each, safety recommendations, and the recorder transcript. Refuses dark KPI tiles and donut charts.
+OWN-WORLD: cool report paper and ink, one recorder-orange for failures, field green for passes; one-pixel ruled
+tables, no rounded cards, no shadows; FAILED / SKIPPED / FLAKY / VOID printed as stamps; DIN-style display,
+system text, monospace only for transcripts and data.
+STORY: the developer sees whether the agent got worse, why, and what to change, then opens the exact conversation.
+FIRST VIEWPORT: run docket: docket number and target, the verdict at specimen scale, the pass rate with its
+interval, then probable cause no. 1 with its evidence, all above the fold.
+FORM: Investigation Docket, candidate 5 of 7; seed 16538cd8.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+-->
+<a class="skip" href="#main">Skip to content</a>
+<header class="masthead">
+  <a class="mark" href="#/" aria-label="Agent Reliability Lab, all dockets">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32"/><path d="M8 22V10h4l4 7 4-7h4v12"/></svg>
+    <span>Agent Reliability Lab</span>
+  </a>
+  <nav aria-label="Main">
+    <a href="#/" data-nav="dockets">Dockets</a>
+    <a href="#/compare" data-nav="compare">Compare</a>
+  </nav>
+  <span class="source" id="source"></span>
+  <button class="theme" id="theme" type="button" aria-label="Switch colour theme">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M10 3.5a6.5 6.5 0 0 1 0 13z"/></svg>
+  </button>
+</header>
+<main id="main" tabindex="-1"><p class="loading">Opening the docket…</p></main>
+<script src="static/app.js" defer></script>
+</body>
+</html>

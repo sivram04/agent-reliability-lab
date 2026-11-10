@@ -44,7 +44,8 @@ statistics, and tells you whether a change made things worse.
 - **Statistics:** Wilson and bootstrap CIs; Fisher exact and Mann-Whitney tests between versions.
 - **Cost:** tokens and estimated cost per run, split by agent, simulated user and judge.
 - **CI:** GitHub Action with PR comments, JUnit XML for any CI system, exit codes for regressions.
-- **Reports:** HTML report with step-by-step trace replay, dashboard across versions, OpenTelemetry export.
+- **Dashboard (`arl ui`):** every run as an investigation file: the verdict, each problem with the exact attack,
+  reply and fix, coverage, replayable conversations, and comparisons; exportable as a static site. OpenTelemetry export too.
 - **Claude Code plugin:** a skill, a background check hook and MCP tools; `arl check` does the same anywhere.
 - **MCP server:** `arl mcp` lets Claude, Cursor or VS Code run suites and explain failures.
 - **Record and replay:** cassettes make real-LLM runs reproducible offline.

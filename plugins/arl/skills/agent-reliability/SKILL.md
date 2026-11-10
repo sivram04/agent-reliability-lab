@@ -58,7 +58,8 @@ Skip this if `arl/target.yaml` exists.
 ## 4. Explaining results
 Lead with the verdict in plain words (for example "3 of 17 attacks got through: all three made the agent
 print its system prompt"), then the pattern behind the failures, then the fix you propose. Quote the
-attack and the reply for one example. Mention `arl ui` for the dashboard with full replays and history.
+attack and the reply for one example. Mention `arl ui` for the dashboard (verdict, problems with fixes, coverage, replays, comparisons) and
+`arl ui --export DIR` to share a read-only copy with the team.
 Secrets appear as `[REDACTED]` in results; never try to recover them.
 
 ## Notes

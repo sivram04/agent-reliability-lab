@@ -40,7 +40,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
   (also across runs), tagged, honestly graded (judge-only where the canary can't decide); secret values are
   scrubbed from prompts and files. MCP tool `generate_attacks`.
 
+- `arl ui`: local read-only dashboard (dockets with pass-rate history, run docket with verdict, probable causes
+  with the exact attack, reply and fix, categories, measurements, capability and OWASP coverage, filterable
+  scenarios, recorder-transcript replay with injected faults, run comparison), light and dark, no build step, no
+  network requests; `arl ui --export` writes a self-contained static copy.
+
 ### Fixed
+- The HTTP adapter retries dropped connections instead of reporting the agent as crashed.
 - LLM calls retry dropped connections and timeouts, not only 429/5xx.
 - Smoke attack scenarios now use the target's `secrets:` instead of only the fixture's code.
 - Scenarios tied to tools a target doesn't declare are skipped instead of failing; one safety scenario no longer

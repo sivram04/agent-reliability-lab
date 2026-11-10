@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "arl-ui",
+      "runtimeExecutable": ".venv/Scripts/arl.exe",
+      "runtimeArgs": ["ui", "--no-open", "--port", "8765", "--db", "docs/results/judge/arl.db", "--db", "reports/demo/arl.db"],
+      "port": 8765
+    }
+  ]
+}

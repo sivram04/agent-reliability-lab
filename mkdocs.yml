@@ -22,6 +22,7 @@ nav:
       - Coverage of agent types: coverage.md
       - Attacks for your agent: generate.md
       - LLM providers and cost: providers.md
+      - Dashboard: dashboard.md
       - CI gating: ci.md
       - Claude Code plugin: claude-code.md
       - MCP server: mcp.md

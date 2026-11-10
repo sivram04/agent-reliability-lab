@@ -7,3 +7,5 @@ reports/
 dist/
 cassettes/
 *.joblib
+.impeccable/review/
+.impeccable/decision/

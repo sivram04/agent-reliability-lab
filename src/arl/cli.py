@@ -560,3 +560,34 @@ def generate_cmd(
     if judge_only:
         typer.echo(f"{judge_only} need a judge to grade (--judge-llm); the rest use deterministic checks.")
     typer.echo(f"Run them: arl run --target {target} --suite {out}")
+
+
+@app.command()
+def ui(
+    db: list[Path] = typer.Option([], "--db", help="Result database(s). Default: .arl/arl.db and arl.db here."),
+    port: int = typer.Option(8765, help="Port on 127.0.0.1."),
+    open_browser: bool = typer.Option(True, "--open/--no-open", help="Open the dashboard in a browser."),
+    export: Path | None = typer.Option(None, help="Write a self-contained read-only copy to this folder instead."),
+):
+    """Dashboard: verdicts, findings with the exact attack and reply, coverage, replays and comparisons."""
+    from .ui.data import Data, discover
+    from .ui.server import export as export_site
+    from .ui.server import serve
+
+    dbs = discover([str(p) for p in db] or None)
+    if not dbs:
+        raise typer.BadParameter("no result database found; run `arl check` or `arl run` first, or pass --db",
+                                 param_hint="--db")
+    data = Data(dbs)
+    if export:
+        index = export_site(data, export)
+        typer.echo(f"Exported {len(data.runs())} runs to {index}")
+        return
+    server = serve(data, port=port, open_browser=open_browser)
+    typer.echo(f"Dashboard on http://127.0.0.1:{server.server_port}/  ({', '.join(map(str, dbs))}). Ctrl+C to stop.")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
