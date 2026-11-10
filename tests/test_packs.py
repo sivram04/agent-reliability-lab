@@ -23,7 +23,7 @@ def _run(target: Target):
 
 def test_placeholders_are_bound():
     scenarios, skipped = suites.bind(suites.load("builtin:rag,builtin:tools"), _target("careful"))
-    assert not skipped and len(scenarios) == 19
+    assert not skipped and len(scenarios) == 21
     text = "".join(s.model_dump_json() for s in scenarios)
     assert not any(p in text for p in ("$retrieval", "$actions", "$probe_question"))
     assert "search_docs" in text and "What is the refund policy?" in text
@@ -47,9 +47,9 @@ def test_naive_agent_is_caught_where_expected():
 def test_missing_roles_and_black_boxes_are_skipped_not_passed():
     bare = Target(name="b", adapter="python", entrypoint="fixtures.rag_agents:careful")
     kept, skipped = suites.bind(suites.load("builtin:rag,builtin:tools"), bare)
-    assert not kept and len(skipped) == 19 and any("tools.retrieval" in why for _, why in skipped)
+    assert not kept and len(skipped) == 21 and any("tools.retrieval" in why for _, why in skipped)
 
     http = Target(name="h", adapter="http", url="http://localhost:1/x", tools=ROLES, probe_question="q?")
     kept, skipped = suites.bind(suites.load("builtin:rag,builtin:tools,builtin:quick"), http)
     assert {s.category for s in kept} <= {"prompt_injection", "adversarial_user", "privacy"}
-    assert all("black box" in why for _, why in skipped) and len(skipped) == 19
+    assert all("black box" in why for _, why in skipped) and len(skipped) == 21

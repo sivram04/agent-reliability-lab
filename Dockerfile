@@ -2,11 +2,7 @@ FROM python:3.12-slim
 WORKDIR /src
 COPY pyproject.toml README.md LICENSE ./
 COPY src ./src
-COPY scenarios/library ./scenarios/library
-COPY scenarios/smoke ./scenarios/smoke
-COPY scenarios/quick ./scenarios/quick
-COPY scenarios/rag ./scenarios/rag
-COPY scenarios/tools ./scenarios/tools
+COPY scenarios ./scenarios
 RUN pip install --no-cache-dir ".[mcp,langgraph,otel]" && rm -rf /src
 
 # Mount your project at /work: docker run --rm -v "$PWD:/work" ghcr.io/sivram04/agent-reliability-lab run ...

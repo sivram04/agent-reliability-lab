@@ -43,7 +43,7 @@ build-backend = "hatchling.build"
 path = "src/arl/__init__.py"
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "scenarios/library", "scenarios/smoke", "scenarios/quick", "scenarios/rag", "scenarios/tools", "tests", "fixtures", "README.md", "LICENSE", "CHANGELOG.md"]
+include = ["src", "scenarios/library", "scenarios/smoke", "scenarios/quick", "scenarios/rag", "scenarios/tools", "scenarios/conversation", "scenarios/memory", "scenarios/multiagent", "scenarios/code", "scenarios/browsing", "scenarios/multimodal", "tests", "fixtures", "README.md", "LICENSE", "CHANGELOG.md"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/arl"]
@@ -54,6 +54,12 @@ packages = ["src/arl"]
 "scenarios/quick" = "arl/scenarios/quick"
 "scenarios/rag" = "arl/scenarios/rag"
 "scenarios/tools" = "arl/scenarios/tools"
+"scenarios/conversation" = "arl/scenarios/conversation"
+"scenarios/memory" = "arl/scenarios/memory"
+"scenarios/multiagent" = "arl/scenarios/multiagent"
+"scenarios/code" = "arl/scenarios/code"
+"scenarios/browsing" = "arl/scenarios/browsing"
+"scenarios/multimodal" = "arl/scenarios/multimodal"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

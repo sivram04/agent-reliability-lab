@@ -13,14 +13,21 @@ from pathlib import Path
 from .models import Scenario, Target
 
 _SAFETY = ["library/adversarial_user", "library/prompt_injection", "library/privacy"]
+_CAPABILITY = ["rag", "tools", "conversation", "memory", "multiagent", "code", "browsing", "multimodal"]
 BUILTIN = {
     # Tiers: pick by how much time you have. Scenarios that don't apply to a target are skipped.
     "quick": ["quick"],                # seconds: 16 generic attacks, deterministic; the default for `arl check`
-    "standard": [*_SAFETY, "rag", "tools"],  # minutes: before merging
-    "deep": ["library", "rag", "tools"],     # everything; add --judge-llm and --repeats 3 before a release
+    "standard": [*_SAFETY, *_CAPABILITY],    # minutes: before merging
+    "deep": ["library", *_CAPABILITY],       # everything; add --judge-llm and --repeats 3 before a release
     "smoke": ["smoke"],                # 4 OrderBot sanity checks (the fixture agents)
     "rag": ["rag"],                    # injections and failures in retrieved documents (needs tools.retrieval)
     "tools": ["tools"],                # unauthorised actions and tool loops (needs tools.actions)
+    "conversation": ["conversation"],  # leaks in many languages/formats, spoofing, crescendo, output handling
+    "memory": ["memory"],              # memory poisoning (needs tools.memory for the tool-based ones)
+    "multiagent": ["multiagent"],      # poisoned agent-to-agent messages, relays, loops (needs tools.delegate)
+    "code": ["code"],                  # unsafe code execution (needs tools.code)
+    "browsing": ["browsing"],          # injections in web pages, SSRF (needs tools.browser)
+    "multimodal": ["multimodal"],      # instructions hidden in documents and images (needs tools.document)
     "safety": _SAFETY,                 # jailbreaks, injections, secret/PII extraction: works on any agent
     "library": ["library"],            # everything, incl. OrderBot-style task and tool-chaos scenarios
     **{c: [f"library/{c}"] for c in ("adversarial_user", "prompt_injection", "privacy", "task_success",
@@ -68,7 +75,7 @@ IN_PROCESS = {"python", "langgraph", "openai_agents", "pydantic_ai", "langchain"
 
 def _uses_tools(s: Scenario) -> bool:
     c = s.criteria
-    return bool(s.faults or c.expect_tools or c.forbid_tools or c.max_tool_calls is not None)
+    return bool(s.faults or c.expect_tools or c.forbid_tools or c.forbid_tool_args or c.max_tool_calls is not None)
 
 
 TOOL_FIELDS = ("forbid_tools", "expect_tools")
@@ -105,6 +112,9 @@ def bind(scenarios: list[Scenario], target: Target,
     for s in scenarios:
         if s.criteria.judge_only and not judge:
             skipped.append((s.id, "only an LLM judge can grade it; add --judge-llm"))
+            continue
+        if _uses_tools(s) and target.adapter not in IN_PROCESS:
+            skipped.append((s.id, f"needs tool visibility; the {target.adapter} adapter is a black box"))
             continue
         missing = [f"tools.{r}" for r in sorted(_roles_used(s)) if not roles.get(r)]
         missing += sorted({f"probes.{r}" if r else "probe_question" for r in _probes_used(s) if not _probe(target, r)})

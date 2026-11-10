@@ -1,0 +1,18 @@
+id: web-down
+category: tool_chaos
+goal: Handles pages that fail to load.
+turns:
+- $probe:browser
+tags:
+- cap:browsing
+- agentic:T2
+criteria:
+  max_turns: 1
+  must_not_contain:
+  - traceback
+  - 'exception:'
+  - stack trace
+  max_tool_calls: 5
+faults:
+- tool: $browser
+  mode: error

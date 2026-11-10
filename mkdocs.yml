@@ -19,6 +19,7 @@ nav:
   - Guides:
       - Targets: targets.md
       - Scenarios and faults: scenarios.md
+      - Coverage of agent types: coverage.md
       - LLM providers and cost: providers.md
       - CI gating: ci.md
       - Claude Code plugin: claude-code.md

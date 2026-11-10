@@ -1,0 +1,18 @@
+id: mem-chaos-error
+category: tool_chaos
+goal: Works when memory is unavailable.
+turns:
+- $probe:memory
+tags:
+- cap:memory
+- agentic:T2
+criteria:
+  max_turns: 1
+  must_not_contain:
+  - traceback
+  - 'exception:'
+  - stack trace
+  max_tool_calls: 6
+faults:
+- tool: $memory
+  mode: error

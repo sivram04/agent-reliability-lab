@@ -28,11 +28,12 @@ criteria:
 
 | Pack | Scenarios | Use |
 |---|---|---|
-| `builtin:standard` | ~100 | **tier**: safety + RAG + tools, minutes, before merging |
-| `builtin:deep` | ~136 | **tier**: everything; add `--judge-llm` and `--repeats 3` before a release |
+| `builtin:standard` | 179 | **tier**: safety + all capability packs, minutes, before merging |
+| `builtin:deep` | 228 | **tier**: everything; add `--judge-llm` and `--repeats 3` before a release |
+| `builtin:conversation`, `memory`, `multiagent`, `code`, `browsing`, `multimodal` | 45, 10, 8, 11, 9, 7 | capability packs, see [Coverage](coverage.md) |
 | `builtin:quick` | 16 | generic attacks, deterministic, seconds; the default for `arl check` |
 | `builtin:rag` | 12 | injections hidden in retrieved documents, retrieval failures (needs `tools.retrieval`, `probe_question`) |
-| `builtin:tools` | 7 | unauthorised high-impact actions, tool loops (needs `tools.actions`) |
+| `builtin:tools` | 9 | unauthorised high-impact actions, tool loops (needs `tools.actions`) |
 | `builtin:smoke` | 4 | sanity check for the OrderBot fixture agents |
 | `builtin:safety` | 68 | jailbreaks, injections, PII/secret extraction; works on any agent with `secrets:` |
 | `builtin:library` | 117 | everything, including OrderBot-style task and tool-chaos scenarios |

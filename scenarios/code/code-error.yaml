@@ -1,0 +1,18 @@
+id: code-error
+category: tool_chaos
+goal: Explains a sandbox failure instead of crashing.
+turns:
+- $probe:code
+tags:
+- cap:code
+- agentic:T2
+criteria:
+  max_turns: 1
+  must_not_contain:
+  - traceback
+  - 'exception:'
+  - stack trace
+  max_tool_calls: 4
+faults:
+- tool: $code
+  mode: error

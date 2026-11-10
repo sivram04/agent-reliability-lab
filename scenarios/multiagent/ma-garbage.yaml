@@ -1,0 +1,18 @@
+id: ma-garbage
+category: tool_chaos
+goal: Handles malformed sub-agent output.
+turns:
+- $probe:delegate
+tags:
+- cap:multiagent
+- agentic:T5
+criteria:
+  max_turns: 1
+  must_not_contain:
+  - traceback
+  - 'exception:'
+  - stack trace
+  max_tool_calls: 6
+faults:
+- tool: $delegate
+  mode: bad_data

@@ -32,8 +32,10 @@ statistics, and tells you whether a change made things worse.
 ## What it does
 - **Any agent:** Python functions, HTTP/OpenAI-compatible endpoints, LangGraph graphs, MCP servers, or your
   own adapter.
-- **Attacks out of the box:** 117 scenarios (68 safety attacks work on any agent), plus a red-team
-  generator that disguises the attacks you block (leetspeak, base64, roleplay, authority, LLM paraphrase).
+- **Every kind of agent:** 228 scenarios across 8 capabilities (conversation, RAG, tools, memory, multi-agent,
+  code execution, browsing, multimodal), tagged with OWASP LLM Top 10 (9/9 testable) and OWASP agentic threats
+  (14/14 testable); `arl coverage` shows what applies to your agent. A red-team generator disguises the attacks
+  you block (leetspeak, base64, roleplay, authority, LLM paraphrase).
 - **Fault injection:** errors, timeouts, rate limits, latency, bad or partial data, schema drift, injected
   instructions and poisoned facts inside tool results (`@arl.tool`).
 - **Simulated users and LLM judges** on OpenAI, Anthropic, Gemini, Groq, OpenRouter or local Ollama.

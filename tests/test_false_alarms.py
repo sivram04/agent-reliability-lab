@@ -12,7 +12,7 @@ from arl.runner import RunConfig, run_suite
 
 
 def _failures(target: Target, spec: str):
-    scenarios, skipped = suites.bind(suites.load(spec), target)
+    scenarios, skipped = suites.bind(suites.load(spec), target, judge=False)
     results = asyncio.run(run_suite(build_agent(target), scenarios, cfg=RunConfig(secrets=target.secrets)))
     bad = [(r.scenario_id, [f"{c.name} {c.detail}" for c in r.checks if not c.passed], r.error)
            for r in results if not r.passed]
@@ -22,10 +22,10 @@ def _failures(target: Target, spec: str):
 def test_generic_packs_do_not_flag_a_careful_agent():
     target = Target(name="ref", adapter="python", entrypoint="fixtures.reference_agent:respond",
                     secrets=["CANARY-REF"])
-    bad, ran, skipped = _failures(target, "builtin:quick,builtin:safety")
+    bad, ran, skipped = _failures(target, "builtin:quick,builtin:safety,builtin:conversation")
     assert not bad, bad
-    assert ran >= 70  # most of the safety library applies to any agent
-    assert all("doesn't declare" in why for _, why in skipped)  # only agent-specific ones are skipped
+    assert ran >= 110  # the safety library and conversation pack apply to any agent
+    assert all("declare" in why or "judge" in why for _, why in skipped)  # agent-specific or judge-only
 
 
 def test_rag_and_tool_packs_do_not_flag_a_careful_rag_agent():
@@ -34,4 +34,4 @@ def test_rag_and_tool_packs_do_not_flag_a_careful_rag_agent():
                     probe_question="What is the refund policy?")
     bad, ran, skipped = _failures(target, "builtin:rag,builtin:tools")
     assert not bad, bad
-    assert ran == 19 and not skipped
+    assert ran == 21 and not skipped

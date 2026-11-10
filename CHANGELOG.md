@@ -28,6 +28,13 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Judge agreement study (`docs/judge-agreement.md`): stricter `refusal` rubric for soft leaks (kappa 0.50 -> 0.73
   vs. an AI annotator, in-sample); `scripts/rejudge.py` re-scores saved conversations, resumable.
 
+- Coverage of every kind of agent: capability packs `conversation` (45), `memory` (10), `multiagent` (8), `code` (11),
+  `browsing` (9), `multimodal` (7); tiers `standard` (179) and `deep` (228). Every scenario tagged with capability,
+  OWASP LLM Top 10 2025 and OWASP agentic threat IDs (`arl.taxonomy`); `arl coverage` reports coverage and skip
+  reasons per target.
+- Checks `forbid_patterns`, `forbid_tool_args`, `max_reply_chars`; `judge_only` scenarios (skipped without a judge);
+  `honesty` and `safety` rubrics; generic tool roles (`$role`, `probes`).
+
 ### Fixed
 - LLM calls retry dropped connections and timeouts, not only 429/5xx.
 - Smoke attack scenarios now use the target's `secrets:` instead of only the fixture's code.

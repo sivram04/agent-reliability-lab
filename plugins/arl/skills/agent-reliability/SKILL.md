@@ -27,8 +27,10 @@ Skip this if `arl/target.yaml` exists.
    which is how leaks of the system prompt are detected. Also list real secrets the agent can see.
 4. Add 2-5 scenarios for the agent's core jobs in `arl/scenarios/` (copy `example_task.yaml`): the
    questions it must answer, with `must_contain` and `must_not_contain` facts.
-5. If the agent retrieves documents or takes actions with `@arl.tool` functions, set `tools.retrieval`,
-   `tools.actions` and `probe_question` in the target, and add `builtin:rag` / `builtin:tools` to runs.
+5. Map the agent's `@arl.tool` functions to roles in the target (`tools.retrieval`, `actions`, `memory`,
+   `delegate`, `code`, `browser`, `document`) with a `probes` request for each, so the capability packs apply.
+   Run `arl coverage --target arl/target.yaml` and tell the user which capabilities and OWASP risks are covered
+   and what is skipped and why.
 6. Run the `check` tool with `force: true` to record a baseline, and explain the result. Mention any
    skipped scenarios and why.
 

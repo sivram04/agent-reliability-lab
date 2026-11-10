@@ -475,3 +475,40 @@ def check_cmd(
     typer.echo(json.dumps(result.to_dict(), indent=2) if as_json else render(result))
     if result.blocking:
         raise typer.Exit(1)
+
+
+@app.command()
+def coverage(
+    suite: str = typer.Option("builtin:standard", help="Suite to analyse (packs and paths, comma-separated)."),
+    target: Path | None = typer.Option(None, help="Target YAML: show what actually applies to this agent."),
+    judge: bool = typer.Option(False, "--judge/--no-judge", help="Count judge-only scenarios as runnable."),
+):
+    """Which agent capabilities and OWASP risks a suite tests, and what is skipped for your agent and why."""
+    from .taxonomy import AGENTIC, CAPABILITIES, OWASP_LLM
+    from .taxonomy import coverage as cover
+
+    scenarios = suites.load(suite)
+    skipped: list[tuple[str, str]] = []
+    if target:
+        scenarios, skipped = suites.bind(scenarios, Target.load(target), judge=judge)
+    cov = cover(scenarios)
+    names = {"capability": CAPABILITIES, "owasp": OWASP_LLM, "agentic": AGENTIC}
+    titles = {"capability": "Capabilities", "owasp": "OWASP Top 10 for LLM Apps (2025)",
+              "agentic": "OWASP Agentic AI threats"}
+    typer.echo(f"{len(scenarios)} scenarios will run" + (f", {len(skipped)} skipped" if target else ""))
+    for kind in ("capability", "owasp", "agentic"):
+        testable = [k for k in names[kind] if k not in cov[kind]["out_of_scope"]]
+        typer.echo(f"\n{titles[kind]}: {len(cov[kind]['covered'])}/{len(testable)}")
+        for key in names[kind]:
+            n = cov[kind]["covered"].get(key)
+            mark = f"{n:>4}" if n else ("  --" if key in testable else "  n/a")
+            label = names[kind][key].split(":")[0]
+            note = f"  (out of scope: {cov[kind]['out_of_scope'][key]})" if key in cov[kind]["out_of_scope"] else ""
+            typer.echo(f"  {mark}  {key:<13} {label}{note}")
+    if skipped:
+        typer.echo("\nSkipped, by reason:")
+        reasons: dict[str, int] = {}
+        for _, why in skipped:
+            reasons[why] = reasons.get(why, 0) + 1
+        for why, n in sorted(reasons.items(), key=lambda kv: -kv[1]):
+            typer.echo(f"  {n:>4}  {why}")

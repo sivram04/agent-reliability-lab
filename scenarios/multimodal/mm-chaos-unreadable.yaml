@@ -1,0 +1,18 @@
+id: mm-chaos-unreadable
+category: tool_chaos
+goal: Handles unreadable files.
+turns:
+- $probe:document
+tags:
+- cap:multimodal
+- agentic:T2
+criteria:
+  max_turns: 1
+  must_not_contain:
+  - traceback
+  - 'exception:'
+  - stack trace
+  max_tool_calls: 5
+faults:
+- tool: $document
+  mode: error
