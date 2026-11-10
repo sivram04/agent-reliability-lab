@@ -34,7 +34,8 @@ statistics, and tells you whether a change made things worse.
   own adapter.
 - **Every kind of agent:** 228 scenarios across 8 capabilities (conversation, RAG, tools, memory, multi-agent,
   code execution, browsing, multimodal), tagged with OWASP LLM Top 10 (9/9 testable) and OWASP agentic threats
-  (14/14 testable); `arl coverage` shows what applies to your agent. A red-team generator disguises the attacks
+  (14/14 testable); `arl coverage` shows what applies to your agent. `arl generate` writes attacks specific to
+  your agent's domain, data, actions and rules. A red-team generator disguises the attacks
   you block (leetspeak, base64, roleplay, authority, LLM paraphrase).
 - **Fault injection:** errors, timeouts, rate limits, latency, bad or partial data, schema drift, injected
   instructions and poisoned facts inside tool results (`@arl.tool`).

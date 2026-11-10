@@ -35,6 +35,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Checks `forbid_patterns`, `forbid_tool_args`, `max_reply_chars`; `judge_only` scenarios (skipped without a judge);
   `honesty` and `safety` rubrics; generic tool roles (`$role`, `probes`).
 
+- `arl generate`: attacks specific to an agent from its profile (extracted by an LLM from the system prompt, or
+  written by hand for offline use): templates plus LLM-written attacks per OWASP risk, validated, deduplicated
+  (also across runs), tagged, honestly graded (judge-only where the canary can't decide); secret values are
+  scrubbed from prompts and files. MCP tool `generate_attacks`.
+
 ### Fixed
 - LLM calls retry dropped connections and timeouts, not only 429/5xx.
 - Smoke attack scenarios now use the target's `secrets:` instead of only the fixture's code.

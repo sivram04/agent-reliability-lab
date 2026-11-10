@@ -512,3 +512,51 @@ def coverage(
             reasons[why] = reasons.get(why, 0) + 1
         for why, n in sorted(reasons.items(), key=lambda kv: -kv[1]):
             typer.echo(f"  {n:>4}  {why}")
+
+
+@app.command("generate")
+def generate_cmd(
+    target: Path = typer.Option(Path("arl/target.yaml"), help="Target YAML."),
+    profile: Path | None = typer.Option(None, help="Agent profile YAML (default: arl/profile.yaml if present)."),
+    describe: str | None = typer.Option(None, help="What the agent does, if the target has no system prompt."),
+    llm: str | None = typer.Option(None, help=f"LLM for profile extraction and attack writing: {LLM_HELP}"),
+    per_risk: int = typer.Option(5, help="LLM-written attacks per OWASP risk."),
+    out: Path = typer.Option(Path("arl/scenarios/generated"), help="Where to write scenarios."),
+):
+    """Write attacks specific to your agent (its domain, secrets, actions and rules), for review."""
+    from .generate import Profile, extract_profile, generate, write
+
+    tgt = Target.load(target)
+    default_profile = target.parent / "profile.yaml"
+    model = build_llm(llm, temperature=0.9, role="generator") if llm else None
+    if profile or default_profile.is_file():
+        prof = Profile.load(profile or default_profile)
+        typer.echo(f"Profile: {profile or default_profile}")
+    elif model is not None:
+        text = describe or tgt.system_prompt
+        if not text:
+            raise typer.BadParameter("pass --describe 'what the agent does' (the target has no system_prompt)",
+                                     param_hint="--describe")
+        from .generate import scrub
+
+        prof = scrub(asyncio.run(extract_profile(model, text)), tgt.secrets)
+        default_profile.write_bytes(prof.dump().encode())
+        typer.echo(f"Extracted a profile and saved it to {default_profile}; review it, then re-run to refine.")
+    else:
+        default_profile.write_bytes(Profile(domain="(what your agent does)", protected=["system prompt"],
+                                            actions=[], rules=[]).dump().encode())
+        raise typer.BadParameter(f"no profile: fill in {default_profile} (written as a template), or pass "
+                                 "--llm to extract one", param_hint="--profile")
+    existing = suites.load("builtin:deep") + (suites.load(str(out)) if out.is_dir() else [])
+    scenarios = asyncio.run(generate(tgt, prof, model, per_risk, existing))
+    paths = write(scenarios, out)
+    by_kind: dict[str, int] = {}
+    for s in scenarios:
+        kind = s.id.split("-")[1]
+        by_kind[kind] = by_kind.get(kind, 0) + 1
+    typer.echo(f"Wrote {len(paths)} new scenarios to {out} ("
+               + ", ".join(f"{n} {k}" for k, n in sorted(by_kind.items())) + ").")
+    judge_only = sum(s.criteria.judge_only for s in scenarios)
+    if judge_only:
+        typer.echo(f"{judge_only} need a judge to grade (--judge-llm); the rest use deterministic checks.")
+    typer.echo(f"Run them: arl run --target {target} --suite {out}")

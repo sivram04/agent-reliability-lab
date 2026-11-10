@@ -34,6 +34,10 @@ Skip this if `arl/target.yaml` exists.
 6. Run the `check` tool with `force: true` to record a baseline, and explain the result. Mention any
    skipped scenarios and why.
 
+7. Generate attacks specific to this agent with `generate_attacks` (it saves `arl/profile.yaml`; show it to
+   the user and refine it with them), then run `arl/scenarios/generated`. Tell the user the generated files
+   need a quick review before they commit them.
+
 ## 2. While building
 - A Stop hook runs a fast check after each turn that changed project files. If scenarios that passed
   before now fail, you are asked to fix them before finishing.

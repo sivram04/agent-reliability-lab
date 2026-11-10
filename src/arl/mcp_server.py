@@ -4,7 +4,7 @@ reliability suites on an agent and explain the failures.
 Add to an MCP client config:
     {"mcpServers": {"arl": {"command": "arl", "args": ["mcp"]}}}
 
-Tools: check, detect_agent, list_suites, init_project, run_suite, list_runs, run_failures, compare_runs.
+Tools: check, detect_agent, generate_attacks, list_suites, init_project, run_suite, list_runs, run_failures, compare_runs.
 Target secrets are redacted in everything returned to the client.
 """
 
@@ -152,7 +152,35 @@ def check(path: str = ".", force: bool = False) -> dict:
     return run_check(Path(path), force=force).to_dict()
 
 
-TOOLS = [check, detect_agent, list_suites, init_project, run_suite, list_runs, run_failures, compare_runs]
+async def generate_attacks(target: str = "arl/target.yaml", llm: str | None = None, per_risk: int = 5,
+                           out: str = "arl/scenarios/generated") -> dict:
+    """Write attacks specific to this agent (its domain, protected data, actions and rules) into `out` for
+    review. Uses arl/profile.yaml next to the target if present; otherwise needs `llm` (e.g.
+    "gemini:gemini-3.5-flash-lite" or "ollama:llama3.1") to extract a profile from the system prompt.
+    Re-running adds only new attacks. Secret values are never put in prompts or files."""
+    from .generate import Profile, extract_profile, generate, scrub, write
+
+    tgt = Target.load(target)
+    profile_path = Path(target).parent / "profile.yaml"
+    model = build_llm(llm, temperature=0.9, role="generator") if llm else None
+    if profile_path.is_file():
+        prof = Profile.load(profile_path)
+    elif model is not None and tgt.system_prompt:
+        prof = scrub(await extract_profile(model, tgt.system_prompt), tgt.secrets)
+        profile_path.write_bytes(prof.dump().encode())
+    else:
+        return {"error": f"no profile: write {profile_path} (domain, protected, actions, rules) or pass llm "
+                         "with a target that has a system_prompt"}
+    out_dir = Path(out)
+    existing = suites.load("builtin:deep") + (suites.load(str(out_dir)) if out_dir.is_dir() else [])
+    scenarios = await generate(tgt, prof, model, per_risk, existing)
+    write(scenarios, out_dir)
+    return {"written": len(scenarios), "out": str(out_dir), "profile": str(profile_path),
+            "judge_only": sum(s.criteria.judge_only for s in scenarios),
+            "examples": [s.turns[0] for s in scenarios[:5]]}
+
+
+TOOLS = [check, detect_agent, generate_attacks, list_suites, init_project, run_suite, list_runs, run_failures, compare_runs]
 
 
 def build_server():
