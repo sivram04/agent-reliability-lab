@@ -75,14 +75,14 @@ def serve(data: Data, host: str = "127.0.0.1", port: int = 8765, open_browser: b
     return server
 
 
-def export(data: Data, out: Path) -> Path:
+def export(data: Data, out: Path, per_target: int | None = 20) -> Path:
     """A self-contained read-only copy: opens from disk (file://) or any static host."""
     out.mkdir(parents=True, exist_ok=True)
     (out / "static").mkdir(exist_ok=True)
     for f in STATIC.iterdir():
         if f.is_file() and f.name != "index.html":
             shutil.copy2(f, out / "static" / f.name)
-    bundle = json.dumps(data.bundle(), default=str).replace("</", "<\\/")
+    bundle = json.dumps(data.bundle(per_target), default=str).replace("</", "<\\/")
     (out / "static" / "data.js").write_text(f"window.ARL_DATA = {bundle};\n", encoding="utf-8")
     html = (STATIC / "index.html").read_text(encoding="utf-8").replace(
         '<script src="static/app.js"', '<script src="static/data.js"></script>\n<script src="static/app.js"')

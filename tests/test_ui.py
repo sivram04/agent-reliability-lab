@@ -113,3 +113,29 @@ def test_bundled_font_is_served_licensed_and_exported(server, db, tmp_path):
     assert b"SIL OPEN FONT LICENSE" in _get(f"{server}/static/D-DIN-LICENSE.txt")[2].upper()
     export(Data([db]), tmp_path / "site")
     assert {"D-DIN.woff2", "D-DIN-Bold.woff2", "D-DIN-LICENSE.txt"} <= {p.name for p in (tmp_path / "site" / "static").iterdir()}
+
+
+def test_scales_to_long_histories(tmp_path):
+    """3,000 runs: opening one run must not depend on history size; exports stay bounded."""
+    import time
+
+    from arl.models import Check, RunResult
+    from arl.store import Store
+
+    r = RunResult(scenario_id="s", category="privacy", repeat=0, seed=0, latency_s=0.1, checks=[Check(name="c", passed=False)],
+                  transcript=[{"role": "user", "content": "q"}, {"role": "assistant", "content": "a"}])
+    db = tmp_path / "big.db"
+    with Store(db) as store:
+        indexes = {row[1] for row in store.conn.execute("PRAGMA index_list(results)")}
+        assert "results_by_run" in indexes
+        for i in range(3000):
+            store.save_run(Target(name=f"agent-{i % 3}", version=str(i), adapter="python"), [r],
+                           {"pass_rate": 0.0, "runs": 1, "passed": 0}, "s")
+    data = Data([db])
+    runs = data.runs()
+    assert len(runs) == 3000 and "by_category" not in runs[0]  # lean list
+    start = time.perf_counter()
+    for run in runs[:50]:
+        data.run(run["id"])
+    assert (time.perf_counter() - start) / 50 < 0.05  # per run, independent of the 3,000 others
+    assert len(data.bundle(per_target=10)["runs"]) == 30

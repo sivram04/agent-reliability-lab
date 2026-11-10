@@ -37,6 +37,9 @@ class Store:
             for k, v in cols.items():
                 if k not in have:
                     self.conn.execute(f"ALTER TABLE {table} ADD COLUMN {k} {v.split()[0]}")
+        # Results are always read by run; without this, every lookup scans the whole history.
+        self.conn.execute("CREATE INDEX IF NOT EXISTS results_by_run ON results (run_id)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS runs_by_created ON runs (created_at)")
 
     def save_run(self, target: Target, results: list[RunResult], summary: dict, suite: str = "",
                  source: str = "cli") -> str:

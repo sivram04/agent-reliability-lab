@@ -89,6 +89,15 @@
     return s + "</svg>";
   }
 
+  const SHOWN = 25;  // runs listed per agent before "Show all": long histories stay fast
+  const runRows = (rs) => rs.map((r) => `<tr class="link" data-href="#/run/${encodeURIComponent(r.id)}">
+    <td><a class="num" href="#/run/${encodeURIComponent(r.id)}">${esc(r.id)}</a></td><td>${esc(r.version)}</td>
+    <td class="hide-sm">${stamp("src", r.source)}</td>
+    <td class="num">${esc(r.passed)}/${esc(r.runs)}</td>
+    <td class="r num">${pct(r.pass_rate)}</td>
+    <td class="hide-sm num muted">${r.ci ? `${pct(r.ci[0])}–${pct(r.ci[1])}` : ""}</td>
+    <td class="r muted">${when(r.created)}</td></tr>`).join("");
+
   async function viewIndex() {
     setNav("dockets");
     const runs = await api("/api/runs");
@@ -109,16 +118,14 @@
         ${rs.length > 1 ? `<a href="#/compare?base=${encodeURIComponent(rs[1].id)}&new=${encodeURIComponent(last.id)}">Compare with the previous run</a>` : ""}</div>
         ${trendSvg(rs)}
         <table><thead><tr><th>Run</th><th>Version</th><th class="hide-sm">Source</th><th>Passed</th><th class="r">Rate</th><th class="hide-sm">95% interval</th><th class="r">When</th></tr></thead><tbody>
-        ${rs.map((r) => `<tr class="link" data-href="#/run/${encodeURIComponent(r.id)}">
-          <td><a class="num" href="#/run/${encodeURIComponent(r.id)}">${esc(r.id)}</a></td><td>${esc(r.version)}</td>
-          <td class="hide-sm">${stamp("src", r.source)}</td>
-          <td class="num">${esc(r.passed)}/${esc(r.runs)}</td>
-          <td class="r num">${pct(r.pass_rate)}</td>
-          <td class="hide-sm num muted">${r.ci ? `${pct(r.ci[0])}–${pct(r.ci[1])}` : ""}</td>
-          <td class="r muted">${when(r.created)}</td></tr>`).join("")}
-        </tbody></table></section>`;
+        ${runRows(rs.slice(0, SHOWN))}
+        </tbody></table>${rs.length > SHOWN ? `<button type="button" class="more" data-target="${esc(target)}">Show all ${rs.length} runs</button>` : ""}</section>`;
     }
     render(html, "Dockets");
+    main.querySelectorAll("button.more").forEach((b) => b.addEventListener("click", () => {
+      b.previousElementSibling.querySelector("tbody").innerHTML = runRows(byTarget.get(b.dataset.target));
+      b.remove();
+    }));
   }
 
   // ---- run docket ---------------------------------------------------------------------------------

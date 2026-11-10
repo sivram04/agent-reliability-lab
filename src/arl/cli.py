@@ -605,6 +605,7 @@ def ui(
     port: int = typer.Option(8765, help="Port on 127.0.0.1."),
     open_browser: bool = typer.Option(True, "--open/--no-open", help="Open the dashboard in a browser."),
     export: Path | None = typer.Option(None, help="Write a self-contained read-only copy to this folder instead."),
+    export_runs: int = typer.Option(20, help="With --export: latest runs per agent to include (0 = all)."),
 ):
     """Dashboard: verdicts, findings with the exact attack and reply, coverage, replays and comparisons."""
     from .ui.data import Data, discover
@@ -618,8 +619,8 @@ def ui(
     _check_dbs(dbs)
     data = Data(dbs)
     if export:
-        index = export_site(data, export)
-        typer.echo(f"Exported {len(data.runs())} runs to {index}")
+        index = export_site(data, export, export_runs or None)
+        typer.echo(f"Exported to {index} (latest {export_runs or 'all'} runs per agent)")
         return
     server = serve(data, port=port, open_browser=open_browser)
     typer.echo(f"Dashboard on http://127.0.0.1:{server.server_port}/  ({', '.join(map(str, dbs))}). Ctrl+C to stop.")

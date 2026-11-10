@@ -27,20 +27,30 @@ class Data:
         self._scenarios: dict[str, Scenario] | None = None
 
     # Runs ---------------------------------------------------------------------------------------
-    def runs(self) -> list[dict]:
-        out = []
-        for db in self.dbs:
-            con = sqlite3.connect(db)
+    def _rows(self, db: Path, where: str = "", args: tuple = ()) -> list[dict]:
+        con = sqlite3.connect(db)
+        try:
             cols = {row[1] for row in con.execute("PRAGMA table_info(runs)")}
             query = RUNS_QUERY if "source" in cols else RUNS_QUERY_OLD  # databases from before run sources
-            for rid, target, version, created, summary, suite, src in con.execute(query):
-                s = json.loads(summary)
-                out.append({"id": rid, "db": str(db), "target": target, "version": version, "created": created,
-                            "suite": suite or "", "source": src or "cli", "pass_rate": s.get("pass_rate"),
-                            "ci": s.get("pass_rate_ci95"), "runs": s.get("runs"), "passed": s.get("passed"),
-                            "scenarios": s.get("scenarios"), "by_category": s.get("by_category", {})})
+            rows = con.execute(query + where, args).fetchall()  # nosec B608 - fixed query, bound arguments
+        finally:
             con.close()
+        out = []
+        for rid, target, version, created, summary, suite, src in rows:
+            s = json.loads(summary)
+            # Lean on purpose: this list is sent for every run in the history.
+            out.append({"id": rid, "db": str(db), "target": target, "version": version, "created": created,
+                        "suite": suite or "", "source": src or "cli", "pass_rate": s.get("pass_rate"),
+                        "ci": s.get("pass_rate_ci95"), "runs": s.get("runs"), "passed": s.get("passed")})
+        return out
+
+    def runs(self) -> list[dict]:
+        out = [r for db in self.dbs for r in self._rows(db)]
         return sorted(out, key=lambda r: r["created"], reverse=True)
+
+    def meta(self, run_id: str) -> dict:
+        db = self._locate(run_id)
+        return self._rows(db, " WHERE id = ?", (run_id,))[0]
 
     def _locate(self, run_id: str) -> Path:
         for db in self.dbs:
@@ -75,7 +85,7 @@ class Data:
 
     # Views ---------------------------------------------------------------------------------------
     def run(self, run_id: str) -> dict:
-        meta = next(r for r in self.runs() if r["id"] == run_id)
+        meta = self.meta(run_id)
         store = Store(self._locate(run_id))
         try:
             summary = store.get_run(run_id)["summary"]
@@ -114,9 +124,18 @@ class Data:
 
         return compare(self.results(base), self.results(new))
 
-    def bundle(self) -> dict:
-        """Everything the app needs, for a static export."""
+    def bundle(self, per_target: int | None = 20) -> dict:
+        """Everything the app needs, for a static export: the latest `per_target` runs of each agent
+        (None = all of them; large histories make large files)."""
         runs = self.runs()
+        if per_target is not None:
+            seen: dict[str, int] = {}
+            kept = []
+            for r in runs:
+                seen[r["target"]] = seen.get(r["target"], 0) + 1
+                if seen[r["target"]] <= per_target:
+                    kept.append(r)
+            runs = kept
         out = {"runs": runs, "run": {}, "replay": {}, "compare": {}}
         for r in runs:
             out["run"][r["id"]] = self.run(r["id"])
