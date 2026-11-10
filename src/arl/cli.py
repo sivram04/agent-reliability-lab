@@ -6,7 +6,6 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -21,6 +20,21 @@ from .store import Store
 from .tracing import setup_otel, shutdown_otel
 
 app = typer.Typer(help="Agent Reliability Lab: chaos engineering for AI agents.")
+
+
+def _version(value: bool) -> None:
+    if value:
+        from . import __version__
+
+        typer.echo(f"arl {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def main(
+    version: bool = typer.Option(False, "--version", callback=_version, is_eager=True, help="Show version and exit."),
+) -> None:
+    """Agent Reliability Lab: chaos engineering for AI agents."""
 label_app = typer.Typer(help="Human labels and judge-human agreement.")
 app.add_typer(label_app, name="label")
 
@@ -34,19 +48,19 @@ def _pct(x) -> str:
 @app.command()
 def run(
     target: Path = typer.Option(..., help="Target YAML file."),
-    suite: Optional[Path] = typer.Option(None, help="Scenario file or directory. Omit for an empty suite."),
+    suite: Path | None = typer.Option(None, help="Scenario file or directory. Omit for an empty suite."),
     repeats: int = typer.Option(1, min=1),
     seed: int = 0,
     concurrency: int = typer.Option(4, min=1),
     db: Path = typer.Option(Path("arl.db"), help="SQLite results file."),
     min_pass_rate: float = typer.Option(0.0, help="Exit 1 if the pass rate falls below this."),
-    json_out: Optional[Path] = typer.Option(None, help="Write the summary JSON here."),
-    results_out: Optional[Path] = typer.Option(None, help="Write full results JSON here (a baseline for compare)."),
-    cassette: Optional[Path] = typer.Option(None, help="Cassette file for record/replay."),
+    json_out: Path | None = typer.Option(None, help="Write the summary JSON here."),
+    results_out: Path | None = typer.Option(None, help="Write full results JSON here (a baseline for compare)."),
+    cassette: Path | None = typer.Option(None, help="Cassette file for record/replay."),
     record_mode: str = typer.Option("off", help="off | record | replay (needs --cassette)."),
-    otel: Optional[str] = typer.Option(None, help="Export traces: console | otlp."),
-    user_llm: Optional[str] = typer.Option(None, help=f"Simulated-user LLM: {LLM_HELP}"),
-    judge_llm: Optional[str] = typer.Option(None, help=f"Judge LLM: {LLM_HELP}"),
+    otel: str | None = typer.Option(None, help="Export traces: console | otlp."),
+    user_llm: str | None = typer.Option(None, help=f"Simulated-user LLM: {LLM_HELP}"),
+    judge_llm: str | None = typer.Option(None, help=f"Judge LLM: {LLM_HELP}"),
 ):
     """Run a scenario suite against a target agent."""
     sys.path.insert(0, str(Path.cwd()))
@@ -125,7 +139,7 @@ def compare(
     db: Path = typer.Option(Path("arl.db")),
     alpha: float = typer.Option(0.05, help="Significance level."),
     max_drop: float = typer.Option(0.0, help="Ignore drops smaller than this (absolute pass rate)."),
-    json_out: Optional[Path] = typer.Option(None),
+    json_out: Path | None = typer.Option(None),
 ):
     """Compare two runs. Exits 1 on a statistically significant regression."""
     report = compare_runs(_load_results(base, db), _load_results(new, db), alpha, max_drop)
@@ -146,7 +160,7 @@ def compare(
 def report(
     run_id: str = typer.Argument(..., help="Run id (or 'latest')."),
     out: Path = typer.Option(..., help="HTML file to write; a .json summary is written next to it."),
-    baseline: Optional[str] = typer.Option(None, help="Baseline run id or results JSON, for a comparison section."),
+    baseline: str | None = typer.Option(None, help="Baseline run id or results JSON, for a comparison section."),
     db: Path = typer.Option(Path("arl.db")),
 ):
     """HTML report card with failing traces you can replay step by step."""
@@ -184,9 +198,9 @@ def dashboard(
 @app.command("ci-summary")
 def ci_summary(
     summary: Path = typer.Option(..., help="Summary JSON from `arl run --json-out`."),
-    comparison: Optional[Path] = typer.Option(None, help="JSON from `arl compare --json-out`."),
+    comparison: Path | None = typer.Option(None, help="JSON from `arl compare --json-out`."),
     out: Path = typer.Option(Path("arl-comment.md")),
-    report_url: Optional[str] = typer.Option(None),
+    report_url: str | None = typer.Option(None),
 ):
     """Markdown for a PR comment / GitHub job summary."""
     from .report import ci_markdown, write
@@ -204,8 +218,8 @@ def redteam(
     rounds: int = typer.Option(2, min=1),
     per_seed: int = typer.Option(4, min=1, help="Mutations tried per surviving scenario per round."),
     seed: int = 0,
-    generator_llm: Optional[str] = typer.Option(None, help=f"Adds an LLM paraphrase mutator: {LLM_HELP}"),
-    report_out: Optional[Path] = typer.Option(None, help="Write the report JSON here."),
+    generator_llm: str | None = typer.Option(None, help=f"Adds an LLM paraphrase mutator: {LLM_HELP}"),
+    report_out: Path | None = typer.Option(None, help="Write the report JSON here."),
 ):
     """Mutate passing attack seeds; keep and save the variants that make the target fail."""
     from .redteam import generate
@@ -232,7 +246,7 @@ def redteam(
 def label_export(
     run_id: str = typer.Option(..., "--run"),
     out: Path = typer.Option(...),
-    sample: Optional[int] = typer.Option(None),
+    sample: int | None = typer.Option(None),
     db: Path = typer.Option(Path("arl.db")),
 ):
     """Export judged transcripts for human labeling."""
@@ -273,7 +287,7 @@ def label_annotate(path: Path):
 
 
 @label_app.command("agreement")
-def label_agreement(path: Path, json_out: Optional[Path] = typer.Option(None)):
+def label_agreement(path: Path, json_out: Path | None = typer.Option(None)):
     """Judge-human agreement on a labeled file."""
     report = labels_mod.agreement(labels_mod.read(path))
     typer.echo(json.dumps(report, indent=2))

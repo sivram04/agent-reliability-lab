@@ -15,8 +15,8 @@ import random
 import sys
 import urllib.error
 import urllib.request
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Awaitable, Callable
 
 from .models import Target
 

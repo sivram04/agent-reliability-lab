@@ -17,8 +17,9 @@ import copy
 import functools
 import random
 import time
+from collections.abc import Callable
 from contextvars import ContextVar
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -45,7 +46,7 @@ class RateLimitError(ToolError):
     """Simulated HTTP 429."""
 
 
-current_toolbox: ContextVar["ToolBox | None"] = ContextVar("arl_toolbox", default=None)
+current_toolbox: ContextVar[ToolBox | None] = ContextVar("arl_toolbox", default=None)
 
 
 def _corrupt(value: Any) -> Any:

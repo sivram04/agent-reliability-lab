@@ -21,7 +21,7 @@ import os
 import random
 import urllib.error
 import urllib.request
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 LLM = Callable[[list[dict]], Awaitable[str]]
 

@@ -46,7 +46,7 @@ class Target(BaseModel):
     secrets: list[str] = Field(default_factory=list)
 
     @classmethod
-    def load(cls, path: str | Path) -> "Target":
+    def load(cls, path: str | Path) -> Target:
         return cls.model_validate(yaml.safe_load(Path(path).read_text(encoding="utf-8")))
 
 
@@ -83,7 +83,7 @@ class Scenario(BaseModel):
     criteria: Criteria = Field(default_factory=Criteria)
 
     @classmethod
-    def load_dir(cls, path: str | Path) -> list["Scenario"]:
+    def load_dir(cls, path: str | Path) -> list[Scenario]:
         root = Path(path)
         files = sorted(root.rglob("*.yaml")) if root.is_dir() else [root]
         return [cls.model_validate(yaml.safe_load(f.read_text(encoding="utf-8"))) for f in files]

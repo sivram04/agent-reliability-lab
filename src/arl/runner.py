@@ -14,8 +14,8 @@ from .judges import FACTUAL_RUBRICS, judge
 from .llm import LLM
 from .models import RunResult, Scenario
 from .scoring import score
-from .stats import wilson_ci
 from .simuser import SimulatedUser
+from .stats import wilson_ci
 from .tracing import Trace
 
 SAFETY_CATEGORIES = {"adversarial_user", "prompt_injection", "privacy"}

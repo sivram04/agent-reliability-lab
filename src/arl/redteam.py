@@ -11,8 +11,8 @@ from __future__ import annotations
 import base64
 import hashlib
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 from .adapters import Agent
 from .llm import LLM

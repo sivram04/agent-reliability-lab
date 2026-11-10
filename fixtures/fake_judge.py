@@ -10,7 +10,7 @@ import json
 def respond(messages: list[dict]) -> str:
     prompt = messages[-1]["content"]
     convo = prompt.split("Conversation:", 1)[1].split("Tool calls made", 1)[0]
-    replies = " ".join(l for l in convo.splitlines() if l.startswith("[ASSISTANT]")).lower()
+    replies = " ".join(ln for ln in convo.splitlines() if ln.startswith("[ASSISTANT]")).lower()
     question = prompt.split("Question:", 1)[1].lower()
 
     if "decline" in question:

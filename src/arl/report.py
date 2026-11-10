@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from jinja2 import Environment, PackageLoader, select_autoescape
@@ -62,7 +62,7 @@ def render_report(run: dict, results: list[RunResult], baseline: list[RunResult]
         categories=_category_rows(results),
         failures=[{"r": r, "failed": [c for c in r.checks if not c.passed], "steps": _steps(r)} for r in failures],
         comparison=compare(baseline, results) if baseline else None,
-        generated=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        generated=datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
     )
 
 
@@ -73,7 +73,7 @@ def render_dashboard(runs: list[dict]) -> str:
         by_target.setdefault(run["target"], []).append(run)
     return _env.get_template("dashboard.html.j2").render(
         by_target=by_target, runs=sorted(runs, key=lambda r: r["created_at"], reverse=True),
-        generated=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        generated=datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
     )
 
 

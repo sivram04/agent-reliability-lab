@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .models import Check, RunResult, Target
@@ -34,7 +34,7 @@ class Store:
 
     def save_run(self, target: Target, results: list[RunResult], summary: dict, suite: str = "") -> str:
         run_id = uuid.uuid4().hex[:12]
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         with self.conn:
             self.conn.execute(
                 "INSERT INTO runs (id, target, version, created_at, summary, suite) VALUES (?, ?, ?, ?, ?, ?)",
