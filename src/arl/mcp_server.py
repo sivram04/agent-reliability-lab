@@ -16,6 +16,7 @@ from pathlib import Path
 
 from . import suites
 from .adapters import build_agent
+from .explain import explain, headline
 from .llm import build_llm
 from .models import RunResult, Target
 from .runner import RunConfig, summarize
@@ -109,6 +110,8 @@ async def run_suite(target: str, suite: str = "builtin:smoke", repeats: int = 1,
     finally:
         store.close()
     return _redact({"run_id": run_id, "target": f"{tgt.name}@{tgt.version}", "summary": summary,
+                    "headline": headline(found := explain(results, tgt.secrets), len(scenarios)),
+                    "findings": [f.to_dict() for f in found],
                     "failures": _failures(results, max_failures),
                     "skipped": [{"scenario": sid, "reason": why} for sid, why in skipped]}, tgt.secrets)
 

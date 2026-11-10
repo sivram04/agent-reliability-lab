@@ -17,6 +17,7 @@ from pathlib import Path
 
 from . import suites
 from .adapters import build_agent
+from .explain import explain
 from .models import RunResult, Target
 from .runner import RunConfig, run_suite, summarize
 from .store import Store
@@ -38,6 +39,7 @@ class CheckResult:
     fixed: list[str] = field(default_factory=list)
     still_failing: list[str] = field(default_factory=list)
     flaky: list[str] = field(default_factory=list)  # new failures that passed when re-run
+    findings: list[dict] = field(default_factory=list)  # plain-English problems (arl.explain)
 
     @property
     def blocking(self) -> bool:
@@ -182,20 +184,26 @@ def run_check(root: Path = Path("."), target: Path | None = None, suite: str | N
         out.message += f" Fixed: {len(fixed)}."
     if flaky:
         out.message += f" Flaky (failed once, passed on re-run): {len(flaky)}."
+    # Explain the failures that matter now: new ones on a regression, otherwise everything failing.
+    focus = set(new) if out.status == "regressed" else failing
+    out.findings = [f.to_dict() for f in explain([now[k] for k in sorted(focus)], tgt.secrets)]
     _save_state(root, {"fingerprint": fp, "run_id": run_id, "pass_rate": summary["pass_rate"], "status": out.status})
     return out
 
 
 def render(result: CheckResult, limit: int = 5) -> str:
     lines = [f"[arl] {result.message}"]
-    for f in result.new_failures[:limit]:
-        lines.append(f"  NEW FAIL {f['scenario']} ({f['category']}): {'; '.join(f['failed_checks']) or f['error']}")
-        if f["last_user"]:
-            lines.append(f"    user:  {f['last_user']}")
-        if f["last_reply"]:
-            lines.append(f"    agent: {f['last_reply']}")
-    if len(result.new_failures) > limit:
-        lines.append(f"  ... and {len(result.new_failures) - limit} more")
+    for i, f in enumerate(result.findings[:3], 1):
+        lines.append(f"  {i}. [{f['severity'].upper()}] {f['title']} ({f['count']})")
+        if f["example_user"]:
+            lines.append(f"     user:  {f['example_user']}")
+            lines.append(f"     agent: {f['example_reply']}")
+        lines.append(f"     fix:   {f['fix']}")
+    if len(result.findings) > 3:
+        lines.append(f"  ... and {len(result.findings) - 3} more problem(s)")
+    if result.new_failures:
+        names = [f["scenario"] for f in result.new_failures]
+        lines.append(f"  new failures: {', '.join(names[:limit])}" + (" ..." if len(names) > limit else ""))
     if result.fixed:
         lines.append(f"  fixed: {', '.join(result.fixed[:limit])}")
     if result.flaky:

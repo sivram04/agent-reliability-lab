@@ -75,6 +75,7 @@ def run(
     cassette: Path | None = typer.Option(None, help="Cassette file for record/replay."),
     record_mode: str = typer.Option("off", help="off | record | replay (needs --cassette)."),
     junit_out: Path | None = typer.Option(None, help="Write JUnit XML (one testcase per scenario run)."),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="List every failing run."),
     otel: str | None = typer.Option(None, help="Export traces: console | otlp."),
     user_llm: str | None = typer.Option(None, help=f"Simulated-user LLM: {LLM_HELP}"),
     judge_llm: str | None = typer.Option(None, help=f"Judge LLM: {LLM_HELP}"),
@@ -113,10 +114,11 @@ def run(
     run_id = Store(db).save_run(tgt, results, summary, str(suite or ""))
 
     typer.echo(f"run {run_id}  target={tgt.name}@{tgt.version}  scenarios={len(scenarios)}  repeats={repeats}")
-    for r in results:
-        if not r.passed:
-            failed = [c.name for c in r.checks if not c.passed]
-            typer.echo(f"  FAIL {r.scenario_id}#{r.repeat}: {r.error or ', '.join(failed)}")
+    if verbose:
+        for r in results:
+            if not r.passed:
+                failed = [c.name for c in r.checks if not c.passed]
+                typer.echo(f"  FAIL {r.scenario_id}#{r.repeat}: {r.error or ', '.join(failed)}")
     lo, hi = summary["pass_rate_ci95"]
     typer.echo(f"pass rate {summary['pass_rate']:.0%} ({summary['passed']}/{summary['runs']}), 95% CI {lo:.0%}-{hi:.0%}")
     sc = summary["scenarios"]
@@ -132,6 +134,13 @@ def run(
     )
     if summary["usage"]:
         typer.echo("tokens " + "  ".join(_usage_line(role, row) for role, row in summary["usage"].items()))
+    from .explain import explain, headline
+    from .explain import render as render_findings
+
+    findings = explain(results, tgt.secrets)
+    typer.echo(f"\n{headline(findings, len(scenarios))}")
+    if findings:
+        typer.echo(render_findings(findings) + ("" if verbose else "\n(--verbose lists every failing run)"))
     if json_out:
         json_out.write_text(json.dumps({"run_id": run_id, "target": tgt.name, "version": tgt.version, **summary},
                                        indent=2))

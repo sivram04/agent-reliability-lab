@@ -74,7 +74,7 @@ def test_stop_hook_blocks_only_on_regression(project):
     assert hook_stop(event) == ""  # baseline run, all pass
     write_bot(False)
     out = json.loads(hook_stop(event))
-    assert out["decision"] == "block" and "NEW FAIL" in out["reason"]
+    assert out["decision"] == "block" and "[HIGH] Leaked protected information" in out["reason"]
     # the follow-up turn after a block must not block again (loop guard)
     write_bot(False)
     assert hook_stop(json.dumps({"cwd": str(root), "stop_hook_active": True})) == ""
