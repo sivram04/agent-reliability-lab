@@ -37,6 +37,7 @@ class CheckResult:
     new_failures: list[dict] = field(default_factory=list)
     fixed: list[str] = field(default_factory=list)
     still_failing: list[str] = field(default_factory=list)
+    flaky: list[str] = field(default_factory=list)  # new failures that passed when re-run
 
     @property
     def blocking(self) -> bool:
@@ -93,7 +94,12 @@ def default_suite(root: Path) -> str:
 
 
 def _keys(results: list[RunResult]) -> dict[str, RunResult]:
-    return {f"{r.scenario_id}#{r.repeat}": r for r in results}
+    """One result per scenario: the first failing repeat if any, else the first run."""
+    out: dict[str, RunResult] = {}
+    for r in results:
+        if r.scenario_id not in out or (out[r.scenario_id].passed and not r.passed):
+            out[r.scenario_id] = r
+    return out
 
 
 def _describe(r: RunResult, secrets: list[str]) -> dict:
@@ -112,7 +118,8 @@ def _describe(r: RunResult, secrets: list[str]) -> dict:
 
 
 def run_check(root: Path = Path("."), target: Path | None = None, suite: str | None = None,
-              db: Path | None = None, force: bool = False) -> CheckResult:
+              db: Path | None = None, force: bool = False, confirm: int = 2) -> CheckResult:
+    """`confirm`: re-runs of each new failure; it only counts as a regression if it fails every time."""
     root = root.resolve()
     target = target or find_target(root)
     if target is None:
@@ -125,7 +132,8 @@ def run_check(root: Path = Path("."), target: Path | None = None, suite: str | N
     try:
         tgt = Target.load(target)
         scenarios = suites.load(suite or default_suite(root), tgt)
-        results = asyncio.run(run_suite(build_agent(tgt), scenarios, cfg=RunConfig(secrets=tgt.secrets)))
+        agent = build_agent(tgt)
+        results = asyncio.run(run_suite(agent, scenarios, cfg=RunConfig(secrets=tgt.secrets)))
     except Exception as exc:  # setup problems are reported, never raised into a hook
         return CheckResult("error", f"Could not run the check: {type(exc).__name__}: {exc}")
 
@@ -149,8 +157,19 @@ def run_check(root: Path = Path("."), target: Path | None = None, suite: str | N
     was_failing = {k for k, r in prev.items() if not r.passed}
     new = sorted(failing - was_failing) if prev else sorted(failing)
     fixed = sorted(k for k in was_failing - failing if k in now)
+    flaky: list[str] = []
+    if new and prev and confirm:
+        # Agents are stochastic: re-run each new failure before calling it a regression.
+        retry = [s for s in scenarios if s.id in new]
+        try:
+            again = asyncio.run(run_suite(agent, retry, cfg=RunConfig(repeats=confirm, seed=1, secrets=tgt.secrets)))
+        except Exception:  # noqa: BLE001  confirmation is best effort
+            again = []
+        passed_once = {r.scenario_id for r in again if r.passed}
+        flaky = sorted(k for k in new if k in passed_once)
+        new = [k for k in new if k not in passed_once]
     out = CheckResult("pass", "", run_id, summary["pass_rate"],
-                      [_describe(now[k], tgt.secrets) for k in new], fixed, sorted(failing & was_failing))
+                      [_describe(now[k], tgt.secrets) for k in new], fixed, sorted(failing & was_failing), flaky)
     if new and prev:
         out.status = "regressed"
         out.message = f"{len(new)} scenario(s) that passed before now fail ({summary['pass_rate']:.0%} pass)."
@@ -161,6 +180,8 @@ def run_check(root: Path = Path("."), target: Path | None = None, suite: str | N
         out.message = f"All {len(results)} scenarios pass."
     if fixed:
         out.message += f" Fixed: {len(fixed)}."
+    if flaky:
+        out.message += f" Flaky (failed once, passed on re-run): {len(flaky)}."
     _save_state(root, {"fingerprint": fp, "run_id": run_id, "pass_rate": summary["pass_rate"], "status": out.status})
     return out
 
@@ -177,6 +198,8 @@ def render(result: CheckResult, limit: int = 5) -> str:
         lines.append(f"  ... and {len(result.new_failures) - limit} more")
     if result.fixed:
         lines.append(f"  fixed: {', '.join(result.fixed[:limit])}")
+    if result.flaky:
+        lines.append(f"  flaky: {', '.join(result.flaky[:limit])}  (not blocking; the agent is inconsistent here)")
     if result.run_id and result.status not in ("unchanged",):
         lines.append(f"  details: arl ui  (run {result.run_id})")
     return "\n".join(lines)

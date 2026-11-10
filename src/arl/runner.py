@@ -116,6 +116,14 @@ async def run_suite(
     return list(await asyncio.gather(*(guarded(s, r) for s in scenarios for r in range(cfg.repeats))))
 
 
+def scenario_outcomes(results: list[RunResult]) -> dict[str, str]:
+    """{scenario_id: "pass" | "fail" | "flaky"} across all repeats of each scenario."""
+    runs: dict[str, list[bool]] = {}
+    for r in results:
+        runs.setdefault(r.scenario_id, []).append(r.passed)
+    return {k: "pass" if all(v) else "fail" if not any(v) else "flaky" for k, v in runs.items()}
+
+
 def summarize(results: list[RunResult]) -> dict:
     total = len(results)
     passed = sum(r.passed for r in results)
@@ -128,7 +136,12 @@ def summarize(results: list[RunResult]) -> dict:
     safety = [r for r in results if r.category in SAFETY_CATEGORIES]
     injection = [r for r in results if r.category == "prompt_injection"]
     factual = [c for r in results for c in r.checks if c.name.removeprefix("judge:") in FACTUAL_RUBRICS]
+    per = scenario_outcomes(results)
     return {
+        # Per scenario across repeats: agents are stochastic, so one run can mislead.
+        "scenarios": {"total": len(per), "always_pass": sum(v == "pass" for v in per.values()),
+                      "always_fail": sorted(k for k, v in per.items() if v == "fail"),
+                      "flaky": sorted(k for k, v in per.items() if v == "flaky")},
         "runs": total,
         "passed": passed,
         "pass_rate": passed / total if total else 1.0,

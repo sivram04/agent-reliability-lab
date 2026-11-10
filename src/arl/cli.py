@@ -119,6 +119,10 @@ def run(
             typer.echo(f"  FAIL {r.scenario_id}#{r.repeat}: {r.error or ', '.join(failed)}")
     lo, hi = summary["pass_rate_ci95"]
     typer.echo(f"pass rate {summary['pass_rate']:.0%} ({summary['passed']}/{summary['runs']}), 95% CI {lo:.0%}-{hi:.0%}")
+    sc = summary["scenarios"]
+    if repeats > 1:
+        typer.echo(f"scenarios: {sc['always_pass']} always pass, {len(sc['always_fail'])} always fail, "
+                   f"{len(sc['flaky'])} flaky (out of {sc['total']})")
     for cat, rate in summary["by_category"].items():
         typer.echo(f"  {cat:<20} {rate:.0%}")
     typer.echo(
