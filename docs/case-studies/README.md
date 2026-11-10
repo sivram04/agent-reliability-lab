@@ -3,8 +3,8 @@
 | # | Target | Status |
 |---|---|---|
 | 1 | [LLM gateway guardrails](01-gateway-guardrails.md) (Project 1) | **Done.** Guardrail bypass measured, a fix applied through policy, re-run with before/after numbers. |
-| 2 | AI research desk (Project 2) | **Blocked.** The desk has no agents yet (it's at Phase 1: EDGAR parsing). Planned: indirect injection through filings, citation faithfulness under tool faults. |
-| 3 | Document intelligence (Project 3) | **Blocked.** The project hasn't been started (only the plan exists). Planned: poisoned documents. |
+| 2 | [Document intelligence Q&A](02-docintel.md) (Project 3) | **Done, one rerun pending.** 116/116 attacks resisted (structurally, via citation verification); 4 real resilience defects (search errors crash, hangs). Control scenario needs a rerun after the Gemini quota reset. |
+| 3 | AI research desk (Project 2) | **In progress.** Wrapper written (`case_studies/research_desk/`); the desk's heavy per-question cost limits suite size on the free tier. |
 
 Still open for case study 1:
 - **Failover under chaos.** This needs the gateway running with provider keys. The lab's HTTP adapter
