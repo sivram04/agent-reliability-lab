@@ -22,6 +22,7 @@ jobs:
         with: { name: dist, path: dist }
 
   pypi:
+    # Needs a PyPI trusted publisher for this repo (workflow release.yml, environment pypi).
     needs: build
     runs-on: ubuntu-latest
     environment: pypi
@@ -47,7 +48,7 @@ jobs:
             ghcr.io/${{ github.repository }}:latest
 
   github-release:
-    needs: [pypi, docker]
+    needs: [build, docker]
     runs-on: ubuntu-latest
     permissions: { contents: write }
     steps:
