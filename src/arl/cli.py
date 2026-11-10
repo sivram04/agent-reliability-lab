@@ -10,6 +10,7 @@ from pathlib import Path
 import typer
 
 from . import labels as labels_mod
+from . import suites
 from .adapters import build_agent
 from .cassette import Cassette
 from .llm import PROVIDERS, build_llm
@@ -54,7 +55,8 @@ def _pct(x) -> str:
 @app.command()
 def run(
     target: Path = typer.Option(..., help="Target YAML file."),
-    suite: Path | None = typer.Option(None, help="Scenario file or directory. Omit for an empty suite."),
+    suite: str | None = typer.Option(None, help="Scenario paths and/or built-in packs, comma-separated "
+                                     "(builtin:smoke, builtin:safety, builtin:library). Omit for an empty suite."),
     repeats: int = typer.Option(1, min=1),
     seed: int = 0,
     concurrency: int = typer.Option(4, min=1),
@@ -75,7 +77,10 @@ def run(
     setup_otel(otel)
     tgt = Target.load(target)
     load_prices(tgt.prices)
-    scenarios = Scenario.load_dir(suite) if suite else []
+    try:
+        scenarios = suites.load(suite)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc), param_hint="--suite") from exc
     tape = Cassette(cassette, record_mode) if cassette else None
     replay = record_mode == "replay"
     # Replay never builds the real agent or LLMs, so it works offline.
@@ -306,3 +311,31 @@ def label_agreement(path: Path, json_out: Path | None = typer.Option(None)):
 
 if __name__ == "__main__":
     app()
+
+
+@app.command()
+def init(
+    path: Path = typer.Argument(Path("."), help="Project root."),
+    adapter: str = typer.Option("http", help="http | python | langgraph | mcp"),
+    ci: bool = typer.Option(True, help="Also write a GitHub Actions workflow."),
+    force: bool = typer.Option(False, help="Overwrite existing files."),
+):
+    """Scaffold arl/target.yaml, a starter scenario and a CI workflow."""
+    from .init import scaffold
+
+    try:
+        written = scaffold(path, adapter, force, ci)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc), param_hint="--adapter") from exc
+    for f, status in written:
+        typer.echo(f"  {status:<8} {f}")
+    typer.echo("\nNext: edit arl/target.yaml, start your agent, then run\n"
+               "  arl run --target arl/target.yaml --suite builtin:safety,arl/scenarios")
+
+
+@app.command("suites")
+def list_suites():
+    """List built-in scenario packs."""
+    for name, rels in sorted(suites.BUILTIN.items()):
+        n = sum(len(list((suites.builtin_root() / r).rglob("*.yaml"))) for r in rels)
+        typer.echo(f"builtin:{name:<20} {n:>4} scenarios")

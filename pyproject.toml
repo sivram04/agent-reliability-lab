@@ -24,6 +24,10 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/arl"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"scenarios/library" = "arl/scenarios/library"
+"scenarios/smoke" = "arl/scenarios/smoke"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src", "."]

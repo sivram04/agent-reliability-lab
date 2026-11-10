@@ -9,6 +9,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Apache-2.0 license, contributing guide, security policy, issue templates.
 - Native LLM providers: `openai:`, `anthropic:`, `gemini:`, `groq:`, `openrouter:`, `ollama:` specs.
 - Token and cost accounting per run and per role (agent, user, judge, generator); target `prices`, `ARL_PRICES_FILE`.
+- `arl init` scaffolds a target, a starter scenario and a CI workflow; `arl suites` lists built-in packs.
+- Built-in scenario packs ship in the wheel: `--suite builtin:safety`, comma-separated suites.
+- `arl --version`.
 - `ARL_LLM_RPM` pacing for free-tier rate limits; judge outages leave a run unjudged instead of aborting it.
 
 ## 0.1.0
