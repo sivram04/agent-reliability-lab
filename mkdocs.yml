@@ -16,6 +16,7 @@ exclude_docs: |
 nav:
   - Home: index.md
   - Getting started: getting-started.md
+  - User guide: USER_GUIDE.md
   - Guides:
       - Targets: targets.md
       - Scenarios and faults: scenarios.md

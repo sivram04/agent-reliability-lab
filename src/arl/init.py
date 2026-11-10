@@ -71,7 +71,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       # Start your agent here so the target URL is reachable, e.g. `docker compose up -d`.
-      - uses: sivram04/agent-reliability-lab@v1
+      - uses: sivram04/agent-reliability-lab@main
         with:
           target: arl/target.yaml
           suite: builtin:safety,arl/scenarios
