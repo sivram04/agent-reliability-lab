@@ -19,6 +19,12 @@ RESULT_COLS = {
 }
 
 
+# Fixed statements built once from the constant column list above; values are always bound parameters.
+INSERT_RESULT = (f"INSERT INTO results ({', '.join(RESULT_COLS)}) "  # nosec B608 - constant column names
+                 f"VALUES ({', '.join('?' * len(RESULT_COLS))})")
+SELECT_RESULTS = f"SELECT {', '.join(RESULT_COLS)} FROM results WHERE run_id = ?"  # nosec B608 - constant columns
+
+
 class Store:
     def __init__(self, path: str | Path = "arl.db"):
         self.conn = sqlite3.connect(path)
@@ -42,7 +48,7 @@ class Store:
                 (run_id, target.name, target.version, now, json.dumps(summary), suite, source),
             )
             self.conn.executemany(
-                f"INSERT INTO results ({', '.join(RESULT_COLS)}) VALUES ({', '.join('?' * len(RESULT_COLS))})",
+                INSERT_RESULT,
                 [
                     (
                         run_id, r.scenario_id, r.category, r.repeat, r.seed, int(r.passed),
@@ -73,7 +79,7 @@ class Store:
 
     def load_results(self, run_id: str) -> list[RunResult]:
         rows = self.conn.execute(
-            f"SELECT {', '.join(RESULT_COLS)} FROM results WHERE run_id = ?", (run_id,)
+            SELECT_RESULTS, (run_id,)
         ).fetchall()
         out = []
         for row in rows:

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from .faults import Fault
 
@@ -51,6 +51,14 @@ class Target(BaseModel):
     tools: dict[str, list[str]] = Field(default_factory=dict)
     probe_question: str | None = None  # a question that makes the agent use its retrieval tool
     probes: dict[str, str] = Field(default_factory=dict)  # per role: a request that makes the agent use it
+
+    @field_validator("url")
+    @classmethod
+    def _http_only(cls, url: str | None) -> str | None:
+        # The lab sends attack text to this address; other schemes (file://, ftp://) are never intended.
+        if url is not None and not url.lower().startswith(("http://", "https://")):
+            raise ValueError(f"url must start with http:// or https:// (got {url[:40]!r})")
+        return url
 
     @classmethod
     def load(cls, path: str | Path) -> Target:

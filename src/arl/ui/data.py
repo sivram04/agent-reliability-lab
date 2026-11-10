@@ -12,6 +12,8 @@ from ..models import RunResult, Scenario
 from ..store import Store
 
 DEFAULT_DBS = (".arl/arl.db", "arl.db")
+RUNS_QUERY = "SELECT id, target, version, created_at, summary, suite, source FROM runs"
+RUNS_QUERY_OLD = "SELECT id, target, version, created_at, summary, suite, 'cli' FROM runs"
 
 
 def discover(paths: list[str] | None, root: Path = Path(".")) -> list[Path]:
@@ -30,9 +32,8 @@ class Data:
         for db in self.dbs:
             con = sqlite3.connect(db)
             cols = {row[1] for row in con.execute("PRAGMA table_info(runs)")}
-            source = "source" if "source" in cols else "'cli'"
-            for rid, target, version, created, summary, suite, src in con.execute(
-                    f"SELECT id, target, version, created_at, summary, suite, {source} FROM runs"):
+            query = RUNS_QUERY if "source" in cols else RUNS_QUERY_OLD  # databases from before run sources
+            for rid, target, version, created, summary, suite, src in con.execute(query):
                 s = json.loads(summary)
                 out.append({"id": rid, "db": str(db), "target": target, "version": version, "created": created,
                             "suite": suite or "", "source": src or "cli", "pass_rate": s.get("pass_rate"),

@@ -52,9 +52,10 @@ def _http_adapter(target: Target) -> Agent:
             payload["messages"] = [{"role": "system", "content": target.system_prompt}, *messages]
         if target.model:
             payload["model"] = target.model
-        req = urllib.request.Request(target.url, data=json.dumps(payload).encode(), headers=headers)
+        req = urllib.request.Request(  # nosec B310 - Target validates the url scheme (http/https only)
+            target.url, data=json.dumps(payload).encode(), headers=headers)
         try:
-            with urllib.request.urlopen(req, timeout=target.timeout_s) as resp:
+            with urllib.request.urlopen(req, timeout=target.timeout_s) as resp:  # nosec B310 - validated scheme
                 body = json.loads(resp.read())
         except urllib.error.HTTPError as exc:
             try:

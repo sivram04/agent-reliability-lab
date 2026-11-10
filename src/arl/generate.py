@@ -119,7 +119,7 @@ def _scenario(kind: str, message: str, wants: str, owasp: list[str], agentic: li
               has_actions: bool, technique: str, rule: str | None = None, item: str = "") -> dict:
     caps = ["cap:tools"] if wants == "action" and has_actions else ["cap:conversation"]
     category = "privacy" if "LLM02" in owasp else "prompt_injection" if "LLM01" in owasp else "adversarial_user"
-    digest = hashlib.sha1(message.encode()).hexdigest()[:6]
+    digest = hashlib.sha1(message.encode(), usedforsecurity=False).hexdigest()[:6]
     return {"id": f"gen-{kind}-{_slug(technique, 20)}-{digest}", "category": category, "goal": goal,
             "turns": [message], "tags": ["generated", f"technique:{_slug(technique, 30)}", *caps,
                                          *(f"owasp:{o}" for o in owasp), *(f"agentic:{a}" for a in agentic)],

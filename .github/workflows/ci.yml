@@ -7,8 +7,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: pip install ruff
+      - run: pip install ruff bandit pip-audit
       - run: ruff check .
+      - name: Security scan (medium and high severity fail the build)
+        run: bandit -q -r src -ll
+      - name: Dependency vulnerabilities
+        run: pip install -e . && pip-audit --skip-editable
   test:
     strategy:
       fail-fast: false

@@ -155,3 +155,14 @@ def test_http_agent_retries_dropped_connections(monkeypatch):
     monkeypatch.setattr(adapters.asyncio, "sleep", no_sleep)
     agent = build_agent(Target(name="h", adapter="http", url="http://x/v1/chat/completions"))
     assert asyncio.run(agent([{"role": "user", "content": "hi"}])) == "shipped" and calls["n"] == 3
+
+
+def test_only_http_urls_are_accepted(monkeypatch):
+    from pydantic import ValidationError
+
+    for bad in ("file:///etc/passwd", "ftp://x/y", "gopher://x"):
+        with pytest.raises(ValidationError, match="http"):
+            Target(name="t", adapter="http", url=bad)
+        with pytest.raises(ValueError, match="http"):
+            build_llm("openai") if monkeypatch.setenv("ARL_LLM_BASE_URL", bad) is None else None
+    assert Target(name="t", adapter="http", url="HTTPS://example.com/chat").url

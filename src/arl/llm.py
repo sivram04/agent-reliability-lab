@@ -72,10 +72,17 @@ async def _pace() -> None:
         _last_call = loop.time()
 
 
+def _check_url(url: str) -> str:
+    if not url.lower().startswith(("http://", "https://")):
+        raise ValueError(f"LLM endpoint must be http:// or https:// (got {url[:40]!r})")
+    return url
+
+
 def _post_json(url: str, body: dict, headers: dict) -> dict:
-    req = urllib.request.Request(url, data=json.dumps(body).encode(),
+    # nosec B310 below: the scheme is checked by _check_url when the client is built.
+    req = urllib.request.Request(url, data=json.dumps(body).encode(),  # nosec B310
                                  headers={"Content-Type": "application/json", **headers})
-    with urllib.request.urlopen(req, timeout=60) as resp:
+    with urllib.request.urlopen(req, timeout=60) as resp:  # nosec B310 - scheme checked by _check_url
         return json.loads(resp.read())
 
 
@@ -110,7 +117,7 @@ def openai_client(
     base_url: str | None = None, model: str | None = None, api_key: str | None = None,
     temperature: float = 0.7, max_retries: int = 8, role: str = "lab", price_model: str | None = None,
 ) -> LLM:
-    base = (base_url or os.environ.get("ARL_LLM_BASE_URL", "http://localhost:8000/v1")).rstrip("/")
+    base = _check_url((base_url or os.environ.get("ARL_LLM_BASE_URL", "http://localhost:8000/v1")).rstrip("/"))
     model = model or os.environ.get("ARL_LLM_MODEL", "llama-3.1-8b-instant")
     key = api_key if api_key is not None else os.environ.get("ARL_LLM_API_KEY", "")
 
@@ -127,7 +134,7 @@ def openai_client(
 
 def anthropic_client(model: str, temperature: float = 0.7, max_retries: int = 8, role: str = "lab",
                      max_tokens: int = 1024) -> LLM:
-    base = os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/")
+    base = _check_url(os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/"))
 
     def post(messages: list[dict]) -> tuple[str, int, int]:
         key = os.environ.get("ANTHROPIC_API_KEY", "")

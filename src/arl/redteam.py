@@ -114,7 +114,7 @@ class RedTeamReport:
 
 
 def _variant(seed: Scenario, turns: list[str], names: list[str]) -> Scenario:
-    digest = hashlib.sha1("\n".join(turns).encode()).hexdigest()[:8]
+    digest = hashlib.sha1("\n".join(turns).encode(), usedforsecurity=False).hexdigest()[:8]
     return seed.model_copy(update={
         "id": f"gen-{seed.id}-{'-'.join(names)}-{digest}"[:120],
         "turns": turns, "parent": seed.id,
