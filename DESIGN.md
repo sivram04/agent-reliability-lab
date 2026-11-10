@@ -21,13 +21,11 @@ the built world.
 | amber (flaky) | #8a5a00 | #f0b44a |
 
 ## Type
-- Display: DIN-style (`Bahnschrift`, `DIN Alternate`, `DIN 2014`, then condensed sans). Headings 600; the verdict
+- Display: D-DIN (Datto, SIL OFL 1.1), bundled as woff2 in `static/` (regular and bold); system DIN faces as fallback. Headings 600; the verdict
   700 at `clamp(2.6rem, 7vw, 5.4rem)`, tracking -0.03em.
 - Text: system UI stack, 15px, 1.55.
 - Mono: only transcripts, IDs, scenario names and data cells (`ui-monospace`, Cascadia Mono, SF Mono).
 - Labels (table heads, speakers, stamps): display face, 11px, uppercase, +0.08em tracking.
-- Open decision: no web font ships yet (offline, no downloads). Outside Windows and macOS the DIN voice falls
-  back to a system sans; self-hosting an OFL DIN-style woff2 is the fix.
 
 ## Components
 - **Rules:** every line 1px (`--rule`, section heads `--rule-strong`); no radius, no shadows, no cards.

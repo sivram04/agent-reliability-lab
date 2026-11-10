@@ -14,7 +14,8 @@ from .data import Data
 
 STATIC = Path(__file__).parent / "static"
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
-         ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml"}
+         ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".woff2": "font/woff2",
+         ".txt": "text/plain; charset=utf-8"}
 
 
 def _handler(data: Data):
@@ -67,6 +68,8 @@ def _handler(data: Data):
 
 def serve(data: Data, host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True) -> ThreadingHTTPServer:
     server = ThreadingHTTPServer((host, port), _handler(data))
+    # Loading every scenario takes a few seconds; do it now so the first run page opens instantly.
+    threading.Thread(target=data.scenario_index, daemon=True).start()
     if open_browser:
         threading.Timer(0.5, lambda: webbrowser.open(f"http://{host}:{server.server_port}/")).start()
     return server

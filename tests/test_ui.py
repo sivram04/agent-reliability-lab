@@ -103,3 +103,11 @@ def test_cli_ui_export_and_missing_db(db, tmp_path):
 def test_package_ships_the_static_app():
     assert {p.name for p in STATIC.iterdir()} >= {"index.html", "app.js", "app.css"}
     assert Path(STATIC / "index.html").read_text(encoding="utf-8").count("<script") == 1
+
+
+def test_bundled_font_is_served_licensed_and_exported(server, db, tmp_path):
+    status, ctype, body = _get(f"{server}/static/D-DIN-Bold.woff2")
+    assert status == 200 and ctype == "font/woff2" and body[:4] == b"wOF2"
+    assert b"SIL OPEN FONT LICENSE" in _get(f"{server}/static/D-DIN-LICENSE.txt")[2].upper()
+    export(Data([db]), tmp_path / "site")
+    assert {"D-DIN.woff2", "D-DIN-Bold.woff2", "D-DIN-LICENSE.txt"} <= {p.name for p in (tmp_path / "site" / "static").iterdir()}

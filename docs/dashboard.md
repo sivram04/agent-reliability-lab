@@ -27,5 +27,5 @@ The server binds to 127.0.0.1 and is read-only. Transcripts contain attack text 
 including anything it leaked; treat exports like logs. All content is escaped before display, so attack
 payloads such as `<script>` show as text.
 
-No network requests: no CDN, fonts or analytics, so it works offline. The display face is the system's
-DIN-style font where available (Bahnschrift on Windows, DIN Alternate on macOS).
+No network requests: no CDN or analytics, so it works offline. The display face, D-DIN by Datto (SIL Open Font
+License 1.1), ships inside the package.
