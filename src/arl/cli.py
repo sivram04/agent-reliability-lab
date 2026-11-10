@@ -12,12 +12,13 @@ import typer
 from . import labels as labels_mod
 from .adapters import build_agent
 from .cassette import Cassette
-from .llm import build_llm
+from .llm import PROVIDERS, build_llm
 from .models import RunResult, Scenario, Target
 from .runner import RunConfig, run_suite, summarize
 from .stats import compare as compare_runs
 from .store import Store
 from .tracing import setup_otel, shutdown_otel
+from .usage import load_prices
 
 app = typer.Typer(help="Agent Reliability Lab: chaos engineering for AI agents.")
 
@@ -38,7 +39,12 @@ def main(
 label_app = typer.Typer(help="Human labels and judge-human agreement.")
 app.add_typer(label_app, name="label")
 
-LLM_HELP = "'openai' (ARL_LLM_* env vars) or 'python:module:fn'."
+LLM_HELP = f"'openai' (ARL_LLM_* env vars), PROVIDER:MODEL ({', '.join(PROVIDERS)}) or 'python:module:fn'."
+
+
+def _usage_line(role: str, row: dict) -> str:
+    cost = "cost n/a" if row["cost_usd"] is None else f"${row['cost_usd']:.4f}"
+    return f"{role}: {row['input_tokens']}+{row['output_tokens']} ({cost})"
 
 
 def _pct(x) -> str:
@@ -68,13 +74,14 @@ def run(
         raise typer.BadParameter("--record-mode needs --cassette")
     setup_otel(otel)
     tgt = Target.load(target)
+    load_prices(tgt.prices)
     scenarios = Scenario.load_dir(suite) if suite else []
     tape = Cassette(cassette, record_mode) if cassette else None
     replay = record_mode == "replay"
     # Replay never builds the real agent or LLMs, so it works offline.
     agent = None if replay else build_agent(tgt)
-    user = None if replay else build_llm(user_llm)
-    judge = None if replay else build_llm(judge_llm, temperature=0.0)  # repeatable verdicts
+    user = None if replay else build_llm(user_llm, role="user")
+    judge = None if replay else build_llm(judge_llm, temperature=0.0, role="judge")  # repeatable verdicts
     if tape:
         agent = tape.wrap(agent)
         user = tape.wrap(user, "user") if user_llm else None
@@ -102,6 +109,8 @@ def run(
         f"loops {_pct(summary['loop_rate'])}  hallucinations {_pct(summary['hallucination_rate'])}  "
         f"p95 {summary['p95_latency_s']:.2f}s"
     )
+    if summary["usage"]:
+        typer.echo("tokens " + "  ".join(_usage_line(role, row) for role, row in summary["usage"].items()))
     if json_out:
         json_out.write_text(json.dumps({"run_id": run_id, "target": tgt.name, "version": tgt.version, **summary},
                                        indent=2))
@@ -228,7 +237,7 @@ def redteam(
     tgt = Target.load(target)
     cfg = RunConfig(secrets=tgt.secrets)
     report = asyncio.run(generate(build_agent(tgt), Scenario.load_dir(seeds), cfg, rounds, per_seed, seed,
-                                  build_llm(generator_llm)))
+                                  build_llm(generator_llm, role="generator")))
     folder = out / tgt.name
     folder.mkdir(parents=True, exist_ok=True)
     for s in report.new_failures:

@@ -18,6 +18,7 @@ import urllib.request
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
+from . import usage
 from .models import Target
 
 Agent = Callable[[list[dict]], Awaitable[str]]
@@ -64,6 +65,10 @@ def _http_adapter(target: Target) -> Agent:
             raise
         # Accept OpenAI-style or a plain {"content": ...} body.
         if "choices" in body:
+            u = body.get("usage") or {}
+            if u:
+                usage.record("agent", body.get("model") or target.model,
+                             u.get("prompt_tokens", 0), u.get("completion_tokens", 0))
             return body["choices"][0]["message"]["content"] or ""
         return body["content"]
 

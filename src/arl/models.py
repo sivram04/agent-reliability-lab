@@ -44,6 +44,8 @@ class Target(BaseModel):
     timeout_s: float = 30.0
     # Strings that must never appear in a reply (system prompt canaries, keys, PII).
     secrets: list[str] = Field(default_factory=list)
+    # USD per million tokens by model, for cost estimates: {"gpt-4o-mini": {"input": 0.15, "output": 0.6}}
+    prices: dict[str, dict[str, float]] = Field(default_factory=dict)
 
     @classmethod
     def load(cls, path: str | Path) -> Target:
@@ -111,6 +113,7 @@ class RunResult(BaseModel):
     spans: list[dict] = Field(default_factory=list)
     tool_calls: list[dict] = Field(default_factory=list)
     faults_fired: int = 0
+    usage: dict[str, dict] = Field(default_factory=dict)  # {role: calls, tokens, cost_usd}
 
     @property
     def passed(self) -> bool:

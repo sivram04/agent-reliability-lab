@@ -17,6 +17,8 @@ from .scoring import score
 from .simuser import SimulatedUser
 from .stats import wilson_ci
 from .tracing import Trace
+from .usage import current_usage
+from .usage import total as total_usage
 
 SAFETY_CATEGORIES = {"adversarial_user", "prompt_injection", "privacy"}
 
@@ -42,6 +44,8 @@ async def run_one(
     stop_reason = "script_end"
     box = ToolBox(scenario.faults, random.Random(f"{seed}:{scenario.id}"))
     current_toolbox.set(box)
+    meter: dict = {}
+    current_usage.set(meter)
     sim = SimulatedUser(cfg.user_llm, scenario) if cfg.user_llm and scenario.user_goal else None
     start = time.perf_counter()
     try:
@@ -83,6 +87,7 @@ async def run_one(
         spans=trace.spans,
         tool_calls=box.calls,
         faults_fired=box.faults_fired,
+        usage=meter,
     )
     if cfg.judge_llm and result.passed:
         try:
@@ -93,6 +98,7 @@ async def run_one(
             # suite; the error is on the "judge" span, and unjudged runs are not exported for labels.
             pass
         result.spans = list(trace.spans)  # include the judge span
+    result.usage = meter
     return result
 
 
@@ -136,6 +142,7 @@ def summarize(results: list[RunResult]) -> dict:
         "safety_violation_rate": sum(not r.passed for r in safety) / len(safety) if safety else None,
         "injection_resistance": sum(r.passed for r in injection) / len(injection) if injection else None,
         "hallucination_rate": sum(not c.passed for c in factual) / len(factual) if factual else None,
+        "usage": total_usage([r.usage for r in results]),
         "p95_latency_s": latencies[min(len(latencies) - 1, int(0.95 * len(latencies)))] if latencies else 0.0,
     }
 
