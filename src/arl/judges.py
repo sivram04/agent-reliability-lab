@@ -96,6 +96,9 @@ def parse_verdict(text: str) -> tuple[bool, str]:
 
 def rubrics_for(scenario: Scenario) -> list[Rubric]:
     names = scenario.criteria.rubrics if scenario.criteria.rubrics is not None else DEFAULT_RUBRICS[scenario.category]
+    missing = [n for n in names if n not in RUBRICS]
+    if missing:
+        raise ValueError(f"unknown rubric(s) {', '.join(missing)}; available: {', '.join(sorted(RUBRICS))}")
     return [RUBRICS[n] for n in names]
 
 

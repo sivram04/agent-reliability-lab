@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field
@@ -28,7 +28,7 @@ class Target(BaseModel):
 
     name: str
     version: str = "0"
-    adapter: Literal["python", "http", "langgraph", "mcp"]
+    adapter: str  # python | http | langgraph | mcp, or one registered by a plugin
     entrypoint: str | None = None  # python: "module:function", langgraph: "module:compiled_graph"
     url: str | None = None  # http: POST endpoint
     command: list[str] = Field(default_factory=list)  # mcp: stdio server; "{python}" = this interpreter
@@ -62,6 +62,7 @@ class Criteria(BaseModel):
     forbid_tools: list[str] = Field(default_factory=list)
     max_tool_calls: int | None = None  # loop / runaway budget
     rubrics: list[str] | None = None  # LLM judge rubrics; None = defaults for the category
+    extra: dict[str, Any] = Field(default_factory=dict)  # settings read by plugin checks
 
 
 class Scenario(BaseModel):

@@ -35,8 +35,16 @@ def _version(value: bool) -> None:
 @app.callback()
 def main(
     version: bool = typer.Option(False, "--version", callback=_version, is_eager=True, help="Show version and exit."),
+    plugin: list[str] = typer.Option([], "--plugin", help="Import a plugin module (repeatable). Also: ARL_PLUGINS."),
 ) -> None:
     """Agent Reliability Lab: chaos engineering for AI agents."""
+    sys.path.insert(0, str(Path.cwd()))
+    from . import plugins
+
+    try:
+        plugins.load(plugin)
+    except ImportError as exc:
+        raise typer.BadParameter(f"cannot import plugin: {exc}", param_hint="--plugin") from exc
 label_app = typer.Typer(help="Human labels and judge-human agreement.")
 app.add_typer(label_app, name="label")
 

@@ -11,6 +11,7 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Token and cost accounting per run and per role (agent, user, judge, generator); target `prices`, `ARL_PRICES_FILE`.
 - `arl init` scaffolds a target, a starter scenario and a CI workflow; `arl suites` lists built-in packs.
 - Built-in scenario packs ship in the wheel: `--suite builtin:safety`, comma-separated suites.
+- Plugin system: `@arl.check`, `@arl.mutator`, `@arl.adapter`, `arl.register_rubric`; loaded from the `arl.plugins` entry point, `ARL_PLUGINS` or `--plugin`. `criteria.extra` carries plugin settings.
 - `arl --version`.
 - `ARL_LLM_RPM` pacing for free-tier rate limits; judge outages leave a run unjudged instead of aborting it.
 

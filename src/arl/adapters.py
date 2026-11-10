@@ -137,4 +137,7 @@ ADAPTERS = {
 
 
 def build_agent(target: Target) -> Agent:
+    if target.adapter not in ADAPTERS:
+        raise ValueError(f"unknown adapter {target.adapter!r}; available: {', '.join(sorted(ADAPTERS))} "
+                         "(plugins can add more)")
     return ADAPTERS[target.adapter](target)
