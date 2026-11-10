@@ -122,3 +122,36 @@ def test_dropped_connections_are_retried(monkeypatch):
     monkeypatch.setattr(llm_mod.asyncio, "sleep", no_sleep)
     out = asyncio.run(llm_mod.openai_client("http://x", "m", "k")([{"role": "user", "content": "hi"}]))
     assert out == "ok" and calls["n"] == 3
+
+
+def test_http_agent_retries_dropped_connections(monkeypatch):
+    import urllib.error
+    import urllib.request
+
+    from arl import adapters
+
+    calls = {"n": 0}
+
+    class Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            return b'{"choices": [{"message": {"content": "shipped"}}]}'
+
+    def flaky(req, timeout=None):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise ConnectionResetError(10054, "forcibly closed")
+        return Resp()
+
+    async def no_sleep(_):
+        return None
+
+    monkeypatch.setattr(urllib.request, "urlopen", flaky)
+    monkeypatch.setattr(adapters.asyncio, "sleep", no_sleep)
+    agent = build_agent(Target(name="h", adapter="http", url="http://x/v1/chat/completions"))
+    assert asyncio.run(agent([{"role": "user", "content": "hi"}])) == "shipped" and calls["n"] == 3

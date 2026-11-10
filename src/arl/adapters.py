@@ -81,6 +81,11 @@ def _http_adapter(target: Target) -> Agent:
                 if exc.code not in (429, 500, 502, 503) or attempt == target.max_retries:
                     raise
                 await asyncio.sleep(min(60, 2 ** (attempt + 1)) + random.random())
+            except (urllib.error.URLError, ConnectionError, TimeoutError):
+                # A dropped connection is a network blip, not the agent crashing: retry before failing.
+                if attempt == target.max_retries:
+                    raise
+                await asyncio.sleep(min(30, 2 ** attempt) + random.random())
         raise RuntimeError("unreachable")
 
     return call
