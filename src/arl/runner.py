@@ -85,8 +85,14 @@ async def run_one(
         faults_fired=box.faults_fired,
     )
     if cfg.judge_llm and result.passed:
-        with trace.span("judge", scenario_id=scenario.id):
-            result.checks += await judge(cfg.judge_llm, scenario, result)
+        try:
+            with trace.span("judge", scenario_id=scenario.id):
+                result.checks += await judge(cfg.judge_llm, scenario, result)
+        except Exception:
+            # A judge outage (e.g. rate limits) leaves this run unjudged instead of aborting the
+            # suite; the error is on the "judge" span, and unjudged runs are not exported for labels.
+            pass
+        result.spans = list(trace.spans)  # include the judge span
     return result
 
 

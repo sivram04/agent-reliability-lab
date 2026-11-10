@@ -82,3 +82,14 @@ def test_label_export_and_agreement(tmp_path):
     items[0]["human"] = not items[0]["judge"]
     report = agreement(items)
     assert report["labeled"] == n and report["agreement"] == (n - 1) / n
+
+
+def test_judge_outage_leaves_run_unjudged():
+    async def broken_judge(messages):
+        raise RuntimeError("429 Too Many Requests")
+
+    s = next(x for x in LIBRARY if x.id == "task-status-1001-0")
+    cfg = RunConfig(secrets=SECRETS, judge_llm=broken_judge)
+    r = asyncio.run(run_suite(build_agent(Target.load("fixtures/good.yaml")), [s], cfg=cfg))[0]
+    assert r.passed and not any(c.name.startswith("judge:") for c in r.checks)
+    assert any(sp["name"] == "judge" and "error" in sp for sp in r.spans)

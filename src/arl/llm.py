@@ -36,9 +36,25 @@ def _semaphore() -> asyncio.Semaphore:
     return _gate
 
 
+_last_call = 0.0
+
+
+async def _pace() -> None:
+    """Space calls to ARL_LLM_RPM requests per minute (unset = no pacing). Called while
+    holding the gate, so waits are serialised across concurrent callers."""
+    global _last_call
+    rpm = float(os.environ.get("ARL_LLM_RPM", "0") or 0)
+    if rpm > 0:
+        loop = asyncio.get_running_loop()
+        wait = _last_call + 60.0 / rpm - loop.time()
+        if wait > 0:
+            await asyncio.sleep(wait)
+        _last_call = loop.time()
+
+
 def openai_client(
     base_url: str | None = None, model: str | None = None, api_key: str | None = None,
-    temperature: float = 0.7, max_retries: int = 5,
+    temperature: float = 0.7, max_retries: int = 8,
 ) -> LLM:
     base = (base_url or os.environ.get("ARL_LLM_BASE_URL", "http://localhost:8000/v1")).rstrip("/")
     model = model or os.environ.get("ARL_LLM_MODEL", "llama-3.1-8b-instant")
@@ -56,12 +72,14 @@ def openai_client(
     async def call(messages: list[dict]) -> str:
         async with _semaphore():
             for attempt in range(max_retries):
+                await _pace()
                 try:
                     return await asyncio.to_thread(post, messages)
                 except urllib.error.HTTPError as exc:
                     if exc.code not in (429, 500, 502, 503) or attempt == max_retries - 1:
                         raise
-                    await asyncio.sleep(min(30, 2 ** attempt) + random.random())
+                    # Per-minute free-tier limits reset within a minute: back off up to 60 s.
+                    await asyncio.sleep(min(60, 2 ** (attempt + 1)) + random.random())
         raise RuntimeError("unreachable")
 
     return call
@@ -79,11 +97,11 @@ def python_client(entrypoint: str) -> LLM:
     return call
 
 
-def build_llm(spec: str | None) -> LLM | None:
+def build_llm(spec: str | None, temperature: float = 0.7) -> LLM | None:
     if not spec:
         return None
     if spec == "openai":
-        return openai_client()
+        return openai_client(temperature=temperature)
     if spec.startswith("python:"):
         return python_client(spec.removeprefix("python:"))
     raise ValueError(f"unknown LLM spec {spec!r}")

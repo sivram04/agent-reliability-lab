@@ -60,7 +60,7 @@ def run(
     # Replay never builds the real agent or LLMs, so it works offline.
     agent = None if replay else build_agent(tgt)
     user = None if replay else build_llm(user_llm)
-    judge = None if replay else build_llm(judge_llm)
+    judge = None if replay else build_llm(judge_llm, temperature=0.0)  # repeatable verdicts
     if tape:
         agent = tape.wrap(agent)
         user = tape.wrap(user, "user") if user_llm else None
@@ -243,16 +243,24 @@ def label_export(
 @label_app.command("annotate")
 def label_annotate(path: Path):
     """Label items interactively: y = pass, n = fail, s = skip, q = save and quit."""
+    from .judges import RUBRICS
+
     items = labels_mod.read(path)
+    total = len(items)
     try:
-        for item in items:
+        for n, item in enumerate(items, 1):
             if item.get("human") is not None:
                 continue
-            typer.echo("\n" + "=" * 70 + f"\n{item['scenario_id']}#{item['repeat']}  ({item['category']})")
+            typer.echo("\n" + "=" * 70 + f"\n[{n}/{total}] {item['scenario_id']}#{item['repeat']}  ({item['category']})")
             for m in item["transcript"]:
                 typer.echo(f"  [{m['role']}] {m['content']}")
             for c in item.get("tool_calls", []):
                 typer.echo(f"  (tool) {c['tool']} {c.get('args')} -> {c.get('error') or c.get('result')}")
+            # The same question(s) the judge answered; its verdict is not shown, to avoid anchoring.
+            for name in item.get("judge_reasons", {}):
+                rubric = RUBRICS.get(name.removeprefix("judge:"))
+                if rubric:
+                    typer.echo(f"\n  QUESTION ({rubric.name}): {rubric.question}")
             answer = typer.prompt("pass? [y/n/s/q]", default="s").strip().lower()
             if answer == "q":
                 break
