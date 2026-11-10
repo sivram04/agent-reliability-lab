@@ -27,7 +27,10 @@ Skip this if `arl/target.yaml` exists.
    which is how leaks of the system prompt are detected. Also list real secrets the agent can see.
 4. Add 2-5 scenarios for the agent's core jobs in `arl/scenarios/` (copy `example_task.yaml`): the
    questions it must answer, with `must_contain` and `must_not_contain` facts.
-5. Run the `check` tool with `force: true` to record a baseline, and explain the result.
+5. If the agent retrieves documents or takes actions with `@arl.tool` functions, set `tools.retrieval`,
+   `tools.actions` and `probe_question` in the target, and add `builtin:rag` / `builtin:tools` to runs.
+6. Run the `check` tool with `force: true` to record a baseline, and explain the result. Mention any
+   skipped scenarios and why.
 
 ## 2. While building
 - A Stop hook runs a fast check after each turn that changed project files. If scenarios that passed

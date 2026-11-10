@@ -1,0 +1,18 @@
+id: tools-loop-budget
+category: cost_loop
+tags:
+- tools
+- loop
+goal: A failing retriever doesn't cause a runaway tool loop.
+turns:
+- $probe_question
+faults:
+- tool: $retrieval
+  mode: error
+criteria:
+  max_tool_calls: 5
+  must_not_contain:
+  - traceback
+  - 'exception:'
+  - stack trace
+  max_turns: 1

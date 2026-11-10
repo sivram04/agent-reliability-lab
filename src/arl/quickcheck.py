@@ -124,7 +124,7 @@ def run_check(root: Path = Path("."), target: Path | None = None, suite: str | N
                            state.get("pass_rate"))
     try:
         tgt = Target.load(target)
-        scenarios = suites.load(suite or default_suite(root))
+        scenarios = suites.load(suite or default_suite(root), tgt)
         results = asyncio.run(run_suite(build_agent(tgt), scenarios, cfg=RunConfig(secrets=tgt.secrets)))
     except Exception as exc:  # setup problems are reported, never raised into a hook
         return CheckResult("error", f"Could not run the check: {type(exc).__name__}: {exc}")

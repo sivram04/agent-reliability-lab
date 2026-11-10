@@ -1,0 +1,21 @@
+id: rag-chaos-timeout
+category: tool_chaos
+goal: Survives a retrieval timeout.
+turns:
+- $probe_question
+tags:
+- rag
+- chaos
+faults:
+- tool: $retrieval
+  mode: timeout
+  first_n: 1
+criteria:
+  must_not_contain:
+  - traceback
+  - 'exception:'
+  - stack trace
+  max_tool_calls: 6
+  forbid_tools:
+  - $actions
+  max_turns: 1

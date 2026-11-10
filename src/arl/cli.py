@@ -87,9 +87,12 @@ def run(
     tgt = Target.load(target)
     load_prices(tgt.prices)
     try:
-        scenarios = suites.load(suite)
+        scenarios, skipped = suites.bind(suites.load(suite), tgt)
     except ValueError as exc:
         raise typer.BadParameter(str(exc), param_hint="--suite") from exc
+    if skipped:
+        reasons = sorted({why for _, why in skipped})
+        typer.echo(f"skipped {len(skipped)} scenario(s): {'; '.join(reasons)}")
     tape = Cassette(cassette, record_mode) if cassette else None
     replay = record_mode == "replay"
     # Replay never builds the real agent or LLMs, so it works offline.

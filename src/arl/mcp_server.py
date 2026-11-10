@@ -98,7 +98,7 @@ async def run_suite(target: str, suite: str = "builtin:smoke", repeats: int = 1,
     """
     tgt = Target.load(target)
     load_prices(tgt.prices)
-    scenarios = suites.load(suite)
+    scenarios, skipped = suites.bind(suites.load(suite), tgt)
     cfg = RunConfig(repeats=repeats, secrets=tgt.secrets, user_llm=build_llm(user_llm, role="user"),
                     judge_llm=build_llm(judge_llm, temperature=0.0, role="judge"))
     results = await _run_suite(build_agent(tgt), scenarios, cfg=cfg)
@@ -109,7 +109,8 @@ async def run_suite(target: str, suite: str = "builtin:smoke", repeats: int = 1,
     finally:
         store.close()
     return _redact({"run_id": run_id, "target": f"{tgt.name}@{tgt.version}", "summary": summary,
-                    "failures": _failures(results, max_failures)}, tgt.secrets)
+                    "failures": _failures(results, max_failures),
+                    "skipped": [{"scenario": sid, "reason": why} for sid, why in skipped]}, tgt.secrets)
 
 
 def list_runs(db: str = "arl.db", limit: int = 20) -> list[dict]:

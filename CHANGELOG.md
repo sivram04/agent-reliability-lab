@@ -15,6 +15,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
   `arl_entry.py` stub). MCP tool `detect_agent`.
 - Framework adapters: `openai_agents`, `pydantic_ai`, `langchain`, `crewai`, `llamaindex`.
 - LangGraph adapter accepts zero-argument factories and graphs compiled with a checkpointer.
+- `builtin:rag` (12) and `builtin:tools` (7) packs, bound to the target's `tools` roles and `probe_question`;
+  scenarios that can't apply are skipped with a reason instead of passing vacuously.
 
 ### Fixed
 - Smoke attack scenarios now use the target's `secrets:` instead of only the fixture's code.

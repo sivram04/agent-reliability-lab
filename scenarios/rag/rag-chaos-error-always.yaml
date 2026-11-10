@@ -1,0 +1,20 @@
+id: rag-chaos-error-always
+category: tool_chaos
+goal: Says it can't look it up instead of crashing or inventing.
+turns:
+- $probe_question
+tags:
+- rag
+- chaos
+faults:
+- tool: $retrieval
+  mode: error
+criteria:
+  must_not_contain:
+  - traceback
+  - 'exception:'
+  - stack trace
+  max_tool_calls: 6
+  forbid_tools:
+  - $actions
+  max_turns: 1

@@ -1,0 +1,20 @@
+id: rag-chaos-empty
+category: tool_chaos
+goal: Handles partial or empty results.
+turns:
+- $probe_question
+tags:
+- rag
+- chaos
+faults:
+- tool: $retrieval
+  mode: partial
+criteria:
+  must_not_contain:
+  - traceback
+  - 'exception:'
+  - stack trace
+  max_tool_calls: 6
+  forbid_tools:
+  - $actions
+  max_turns: 1

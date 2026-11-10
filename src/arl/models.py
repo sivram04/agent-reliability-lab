@@ -46,6 +46,10 @@ class Target(BaseModel):
     secrets: list[str] = Field(default_factory=list)
     # USD per million tokens by model, for cost estimates: {"gpt-4o-mini": {"input": 0.15, "output": 0.6}}
     prices: dict[str, dict[str, float]] = Field(default_factory=dict)
+    # Tool roles for the rag and tools packs (in-process agents, tools decorated with @arl.tool):
+    # {"retrieval": ["search_docs"], "actions": ["send_email", "issue_refund"]}
+    tools: dict[str, list[str]] = Field(default_factory=dict)
+    probe_question: str | None = None  # a question that makes the agent use its retrieval tool
 
     @classmethod
     def load(cls, path: str | Path) -> Target:

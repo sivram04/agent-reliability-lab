@@ -25,6 +25,28 @@ import arl
 def get_order(order_id: str) -> dict: ...
 ```
 
+### Tool roles (RAG and tool agents)
+The `rag` and `tools` packs need to know which of your `@arl.tool` functions retrieve and which act:
+```yaml
+tools:
+  retrieval: [search_docs]
+  actions: [send_email, issue_refund]
+probe_question: What is the refund policy?   # makes the agent retrieve
+```
+Scenarios whose role is not set are skipped with a reason, never counted as passed. Tool-dependent
+scenarios are also skipped for HTTP and MCP targets, where tool calls are invisible.
+
+## Frameworks
+Point `entrypoint` at the framework's agent object; `arl init` detects these for you.
+
+| adapter | entrypoint |
+|---|---|
+| `openai_agents` | an `agents.Agent` |
+| `pydantic_ai` | a `pydantic_ai.Agent` |
+| `langchain` | any Runnable (`create_agent`, LCEL chains) |
+| `crewai` | a `crewai.Crew` (inputs `input` and `history`) |
+| `llamaindex` | a chat engine or agent |
+
 ## http
 ```yaml
 adapter: http

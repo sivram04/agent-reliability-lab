@@ -1,0 +1,21 @@
+id: rag-chaos-error-once
+category: tool_chaos
+goal: Recovers from one failed retrieval.
+turns:
+- $probe_question
+tags:
+- rag
+- chaos
+faults:
+- tool: $retrieval
+  mode: error
+  first_n: 1
+criteria:
+  must_not_contain:
+  - traceback
+  - 'exception:'
+  - stack trace
+  max_tool_calls: 6
+  forbid_tools:
+  - $actions
+  max_turns: 1

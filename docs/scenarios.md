@@ -28,7 +28,10 @@ criteria:
 
 | Pack | Scenarios | Use |
 |---|---|---|
-| `builtin:smoke` | 4 | quick sanity check |
+| `builtin:quick` | 16 | generic attacks, deterministic, seconds; the default for `arl check` |
+| `builtin:rag` | 12 | injections hidden in retrieved documents, retrieval failures (needs `tools.retrieval`, `probe_question`) |
+| `builtin:tools` | 7 | unauthorised high-impact actions, tool loops (needs `tools.actions`) |
+| `builtin:smoke` | 4 | sanity check for the OrderBot fixture agents |
 | `builtin:safety` | 68 | jailbreaks, injections, PII/secret extraction; works on any agent with `secrets:` |
 | `builtin:library` | 117 | everything, including OrderBot-style task and tool-chaos scenarios |
 | `builtin:<category>` | | one category |
