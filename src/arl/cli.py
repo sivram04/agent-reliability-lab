@@ -74,6 +74,7 @@ def run(
     results_out: Path | None = typer.Option(None, help="Write full results JSON here (a baseline for compare)."),
     cassette: Path | None = typer.Option(None, help="Cassette file for record/replay."),
     record_mode: str = typer.Option("off", help="off | record | replay (needs --cassette)."),
+    junit_out: Path | None = typer.Option(None, help="Write JUnit XML (one testcase per scenario run)."),
     otel: str | None = typer.Option(None, help="Export traces: console | otlp."),
     user_llm: str | None = typer.Option(None, help=f"Simulated-user LLM: {LLM_HELP}"),
     judge_llm: str | None = typer.Option(None, help=f"Judge LLM: {LLM_HELP}"),
@@ -129,6 +130,10 @@ def run(
                                        indent=2))
     if results_out:
         _write_results(results_out, results)
+    if junit_out:
+        from .junit import write as write_junit
+
+        write_junit(junit_out, results, tgt.name, tgt.secrets)
     if summary["pass_rate"] < min_pass_rate:
         raise typer.Exit(1)
 
@@ -347,3 +352,13 @@ def list_suites():
     for name, rels in sorted(suites.BUILTIN.items()):
         n = sum(len(list((suites.builtin_root() / r).rglob("*.yaml"))) for r in rels)
         typer.echo(f"builtin:{name:<20} {n:>4} scenarios")
+
+
+@app.command("mcp")
+def mcp_cmd():
+    """Serve the lab over MCP (stdio) for AI assistants. Needs the `mcp` extra."""
+    try:
+        from .mcp_server import main as serve
+    except ImportError as exc:
+        raise typer.BadParameter("install the MCP extra: pip install 'agent-reliability-lab[mcp]'") from exc
+    serve()

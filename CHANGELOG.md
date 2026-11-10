@@ -12,6 +12,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - `arl init` scaffolds a target, a starter scenario and a CI workflow; `arl suites` lists built-in packs.
 - Built-in scenario packs ship in the wheel: `--suite builtin:safety`, comma-separated suites.
 - Plugin system: `@arl.check`, `@arl.mutator`, `@arl.adapter`, `arl.register_rubric`; loaded from the `arl.plugins` entry point, `ARL_PLUGINS` or `--plugin`. `criteria.extra` carries plugin settings.
+- `arl run --junit-out` writes JUnit XML for any CI system, with target secrets redacted.
+- `arl mcp`: the lab as an MCP server (run_suite, run_failures, compare_runs, list_runs, list_suites, init_project).
 - `arl --version`.
 - `ARL_LLM_RPM` pacing for free-tier rate limits; judge outages leave a run unjudged instead of aborting it.
 
