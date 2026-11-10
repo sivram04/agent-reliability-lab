@@ -39,6 +39,7 @@ def server(db):
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     yield f"http://127.0.0.1:{srv.server_port}"
     srv.shutdown()
+    srv.server_close()
 
 
 def _get(url):
@@ -68,6 +69,7 @@ def test_static_files_and_errors(server):
         with pytest.raises(urllib.error.HTTPError) as err:
             _get(server + bad)
         assert err.value.code == 404
+        err.value.close()
 
 
 def test_every_dynamic_value_is_escaped():

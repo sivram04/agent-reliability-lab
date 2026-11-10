@@ -62,6 +62,8 @@ def _http_adapter(target: Target) -> Agent:
                 err = json.loads(exc.read()).get("error", {})
             except (ValueError, AttributeError):
                 err = {}
+            finally:
+                exc.close()  # the error carries an open response; release the connection
             if isinstance(err, dict) and err.get("type") in target.block_types:
                 return f"[blocked: {err.get('type')}: {err.get('message', '')}]"
             raise
@@ -79,6 +81,7 @@ def _http_adapter(target: Target) -> Agent:
             try:
                 return await asyncio.to_thread(post, messages)
             except urllib.error.HTTPError as exc:
+                exc.close()
                 if exc.code not in (429, 500, 502, 503) or attempt == target.max_retries:
                     raise
                 await asyncio.sleep(min(60, 2 ** (attempt + 1)) + random.random())

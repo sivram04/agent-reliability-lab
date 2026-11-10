@@ -112,7 +112,8 @@ def run(
         tape.save()
     shutdown_otel()
     summary = summarize(results)
-    run_id = Store(db).save_run(tgt, results, summary, str(suite or ""))
+    with Store(db) as store:
+        run_id = store.save_run(tgt, results, summary, str(suite or ""))
 
     typer.echo(f"run {run_id}  target={tgt.name}@{tgt.version}  scenarios={len(scenarios)}  repeats={repeats}")
     if verbose:
@@ -165,13 +166,16 @@ def _load_results(spec: str, db: Path) -> list[RunResult]:
     path = Path(spec)
     if path.suffix == ".json" and path.exists():
         return [RunResult.model_validate(r) for r in json.loads(path.read_text(encoding="utf-8"))]
-    return Store(db).load_results(spec)
+    with Store(db) as store:
+        return store.load_results(spec)
 
 
 @app.command()
 def runs(db: Path = typer.Option(Path("arl.db"))):
     """List past runs."""
-    for run_id, name, version, created, summary in Store(db).list_runs():
+    with Store(db) as store:
+        rows = store.list_runs()
+    for run_id, name, version, created, summary in rows:
         s = json.loads(summary)
         typer.echo(f"{run_id}  {created[:19]}  {name}@{version}  {s['pass_rate']:.0%} of {s['runs']}")
 
@@ -210,11 +214,11 @@ def report(
     """HTML report card with failing traces you can replay step by step."""
     from .report import render_report, write
 
-    store = Store(db)
-    if run_id == "latest":
-        run_id = store.list_runs()[0][0]
-    run = store.get_run(run_id)
-    results = store.load_results(run_id)
+    with Store(db) as store:
+        if run_id == "latest":
+            run_id = store.list_runs()[0][0]
+        run = store.get_run(run_id)
+        results = store.load_results(run_id)
     write(out, render_report(run, results, _load_results(baseline, db) if baseline else None))
     write(out.with_suffix(".json"), json.dumps({**run, "results": [r.model_dump() for r in results]}, default=str))
     typer.echo(f"wrote {out}")
@@ -228,13 +232,13 @@ def dashboard(
     """Static dashboard: history across versions plus a report page per run."""
     from .report import render_dashboard, render_report, write
 
-    store = Store(db)
     runs = []
-    for run_id, *_ in store.list_runs():
-        run = store.get_run(run_id)
-        page = f"runs/{run_id}.html"
-        write(out.parent / page, render_report(run, store.load_results(run_id)))
-        runs.append({**run, "report": page})
+    with Store(db) as store:
+        for run_id, *_ in store.list_runs():
+            run = store.get_run(run_id)
+            page = f"runs/{run_id}.html"
+            write(out.parent / page, render_report(run, store.load_results(run_id)))
+            runs.append({**run, "report": page})
     write(out, render_dashboard(runs))
     typer.echo(f"wrote {out} ({len(runs)} runs)")
 
@@ -294,7 +298,8 @@ def label_export(
     db: Path = typer.Option(Path("arl.db")),
 ):
     """Export judged transcripts for human labeling."""
-    n = labels_mod.export(Store(db), run_id, out, sample)
+    with Store(db) as store:
+        n = labels_mod.export(store, run_id, out, sample)
     typer.echo(f"exported {n} items to {out}")
 
 

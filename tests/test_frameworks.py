@@ -43,6 +43,7 @@ def stub():
     yield
     mp.undo()
     server.shutdown()
+    server.server_close()
 
 
 SCENARIOS = [

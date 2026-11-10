@@ -51,6 +51,7 @@ def agent():
                     max_retries=2)
     yield target
     server.shutdown()
+    server.server_close()
 
 
 def _ask(target, text):

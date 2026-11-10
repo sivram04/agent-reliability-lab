@@ -160,6 +160,8 @@ async def generate_attacks(target: str = "arl/target.yaml", llm: str | None = No
     Re-running adds only new attacks. Secret values are never put in prompts or files."""
     from .generate import Profile, extract_profile, generate, scrub, write
 
+    if not Path(target).is_file():
+        return {"error": f"target file not found: {target}. Run init_project first."}
     tgt = Target.load(target)
     profile_path = Path(target).parent / "profile.yaml"
     model = build_llm(llm, temperature=0.9, role="generator") if llm else None

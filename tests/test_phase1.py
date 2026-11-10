@@ -19,6 +19,7 @@ def http_target():
     yield Target(name="orderbot-good-http", adapter="http",
                  url=f"http://127.0.0.1:{server.server_address[1]}/chat")
     server.shutdown()
+    server.server_close()
 
 
 def _targets(http_target):

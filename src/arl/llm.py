@@ -99,6 +99,7 @@ def _client(post: Post, model: str, role: str, max_retries: int) -> LLM:
                     usage.record(role, model, tin, tout)
                     return text
                 except urllib.error.HTTPError as exc:
+                    exc.close()  # release the connection before retrying or re-raising
                     if exc.code not in RETRY_CODES or attempt == max_retries - 1:
                         raise
                     # Per-minute free-tier limits reset within a minute: back off up to 60 s.

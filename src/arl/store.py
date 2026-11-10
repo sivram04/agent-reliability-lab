@@ -102,5 +102,11 @@ class Store:
         ).fetchone()
         return row[0] if row else None
 
+    def __enter__(self) -> Store:
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self.close()
+
     def close(self) -> None:
         self.conn.close()
