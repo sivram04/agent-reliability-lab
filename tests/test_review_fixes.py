@@ -225,3 +225,55 @@ def test_13_export_loads_each_run_once_and_rejects_bad_indexes(tmp_path, monkeyp
     assert calls["n"] == 1
     with pytest.raises(IndexError):
         data.replay(run_id, -1)
+
+
+# ---- second review: redaction and detection share one definition ----------------------------------------
+
+def raising_secret_agent(messages):
+    raise RuntimeError("login failed for ARL-CANARY-Q9 user")
+
+
+def test_r2_1_secrets_in_agent_errors_stay_out_of_console(tmp_path):
+    (tmp_path / "t.yaml").write_text("name: t\nadapter: python\nentrypoint: tests.test_review_fixes:raising_secret_agent\n"
+                                     "secrets: [ARL-CANARY-Q9]\n")
+    (tmp_path / "s.yaml").write_text("id: s\ncategory: privacy\ngoal: g\nturns: [hi]\ncriteria: {forbid_secrets: true}\n")
+    res = runner.invoke(app, ["run", "--target", str(tmp_path / "t.yaml"), "--suite", str(tmp_path / "s.yaml"),
+                              "--db", str(tmp_path / "a.db"), "--verbose"])
+    assert "ARL-CANARY-Q9" not in res.output and "[REDACTED]" in res.output
+
+
+@pytest.mark.parametrize("secret", ["content", "role", r"TOP\SECRET-77", 'pa"ss77x'])
+def test_r2_2_redaction_never_corrupts_or_misses(tmp_path, secret):
+    from arl.models import Check, RunResult
+    from arl.redact import redact_results
+
+    r = RunResult(scenario_id="s", category="privacy", repeat=0, seed=0, latency_s=0.1, error=f"boom {secret}",
+                  transcript=[{"role": "user", "content": "q"}, {"role": "assistant", "content": f"leaked: {secret}"}],
+                  checks=[Check(name="no_secret_leak", passed=False, detail=secret)])
+    out = redact_results([r], [secret])[0]
+    assert out.transcript[0].keys() == {"role", "content"}  # structure untouched
+    assert secret not in out.transcript[1]["content"] and secret not in out.error and secret not in out.checks[0].detail
+
+
+def test_r2_3_encoded_leaks_are_redacted_everywhere(tmp_path):
+    from arl.junit import to_xml
+    from arl.models import RunResult
+    from arl.redact import redact_results
+
+    canary = "ARL-CANARY-11112222"
+    forms = [base64.b64encode(f"ref {canary}".encode()).decode(), canary[::-1], " ".join(canary.replace("-", ""))]
+    r = RunResult(scenario_id="s", category="privacy", repeat=0, seed=0, latency_s=0.1, checks=[],
+                  transcript=[{"role": "assistant", "content": " | ".join(forms)}])
+    stored = redact_results([r], [canary])[0].transcript[0]["content"]
+    xml = to_xml([r], "t", [canary])
+    for form in forms:
+        assert form not in stored and form not in xml, form
+
+
+def test_r2_4_ordinary_text_is_not_a_leak():
+    from arl.redact import leak_form
+
+    text = "To reset, open Settings > Password. 1. Choose a new one. Then click Admin 2024 panel."
+    assert leak_form("password1", text) is None and leak_form("admin2024", text) is None
+    assert leak_form("SECRET-77", "the secret_77 code") == "re-punctuated"
+    assert leak_form("SECRET-77", "S E C R E T 7 7") == "spaced out"

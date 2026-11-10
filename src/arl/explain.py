@@ -11,6 +11,7 @@ import re
 from dataclasses import dataclass, field
 
 from .models import RunResult
+from .redact import redactor
 
 SEVERITY_ORDER = {"invalid": 0, "high": 1, "medium": 2, "low": 3}
 # Real provider limits, not the lab's own simulated rate_limit fault ("simulated rate limit").
@@ -151,17 +152,17 @@ def _leaked(r: RunResult, secrets: list[str]) -> list[str]:
 
 def explain(results: list[RunResult], secrets: list[str] = ()) -> list[Finding]:
     groups: dict[str, Finding] = {}
+    clean = redactor(list(secrets))
     for r in results:
         if r.passed:
             continue
         key, title, severity, why, fix = _kind(r)
+        fix = clean(fix)  # fixes quote the agent's error text
         f = groups.get(key)
         if f is None:
             user = next((m["content"] for m in reversed(r.transcript) if m["role"] == "user"), "")
             reply = next((m["content"] for m in reversed(r.transcript) if m["role"] == "assistant"), "")
-            for s in secrets:
-                if s:
-                    reply = re.sub(re.escape(s), "[REDACTED]", reply, flags=re.I)
+            reply, user = clean(reply), clean(user)
             f = groups[key] = Finding(key, title, severity, why, fix, example_user=user[:300],
                                       example_reply=reply[:300], leaked=_leaked(r, secrets))
         if r.scenario_id not in f.scenarios:

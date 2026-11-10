@@ -12,7 +12,6 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -21,6 +20,7 @@ from . import suites
 from .adapters import build_agent, reachable
 from .explain import explain
 from .models import RunResult, Target
+from .redact import redactor
 from .runner import RunConfig, run_suite, summarize
 from .store import Store
 
@@ -115,9 +115,7 @@ def _describe(r: RunResult, secrets: list[str]) -> dict:
         "last_user": next((m["content"] for m in reversed(r.transcript) if m["role"] == "user"), "")[:300],
         "last_reply": last_reply[:300],
     })
-    for s in secrets:
-        if s:
-            text = re.sub(re.escape(s), "[REDACTED]", text, flags=re.IGNORECASE)
+    text = redactor(secrets)(text)
     return json.loads(text)
 
 

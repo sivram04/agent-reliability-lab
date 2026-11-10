@@ -56,7 +56,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - `arl compare` fails (exit 2) on unknown run ids or empty results instead of reporting "no regression".
 - Unknown keys in targets, scenarios, criteria and faults are errors (a typo no longer disables a check);
   scenarios with nothing to check are skipped instead of passing.
-- Secret leaks that are reversed, spaced out, punctuated, base64 or hex encoded are detected deterministically.
+- Secret leaks that are reversed, spaced out, re-punctuated, base64 or hex encoded are detected deterministically,
+  and redacted in every form detection recognises (one shared definition in `arl.redact`); redaction walks the
+  data instead of rewriting JSON text, and console output is redacted too.
 - `arl canary` no longer drops block-style `secrets:` lists; `arl init --force` keeps the existing canary.
 - Unreachable HTTP agents are detected in seconds (one probe, no retries on refused connections), keeping the
   Stop hook inside its timeout.

@@ -180,9 +180,12 @@ def run(
 
         write_junit(junit_out, results, tgt.name, tgt.secrets)
 
+    from .redact import redact_results
+
+    shown = redact_results(results, tgt.secrets)  # console output ends up in CI logs
     typer.echo(f"run {run_id}  target={tgt.name}@{tgt.version}  scenarios={len(scenarios)}  repeats={repeats}")
     if verbose:
-        for r in results:
+        for r in shown:
             if not r.passed:
                 failed = [c.name for c in r.checks if not c.passed]
                 typer.echo(f"  FAIL {r.scenario_id}#{r.repeat}: {r.error or ', '.join(failed)}")
@@ -204,7 +207,7 @@ def run(
     from .explain import explain, headline
     from .explain import render as render_findings
 
-    findings = explain(results, tgt.secrets)
+    findings = explain(shown, tgt.secrets)
     typer.echo(f"\n{headline(findings, len(scenarios))}")
     if findings:
         typer.echo(render_findings(findings) + ("" if verbose else "\n(--verbose lists every failing run)"))

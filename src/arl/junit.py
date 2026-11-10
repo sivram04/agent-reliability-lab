@@ -11,23 +11,17 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from .models import RunResult
+from .redact import redactor
 
 XML_INVALID = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]")
 
 
-def _redactor(secrets: list[str]):
-    pats = [re.compile(re.escape(s), re.IGNORECASE) for s in sorted(secrets, key=len, reverse=True) if s]
-
-    def clean(text: str) -> str:
-        for p in pats:
-            text = p.sub("[REDACTED]", text)
-        return XML_INVALID.sub("�", text)  # control characters are not allowed in XML 1.0
-    return clean
-
-
 def to_xml(results: list[RunResult], name: str = "arl", secrets: list[str] = ()) -> str:
     """Target secrets are replaced with [REDACTED]: CI logs are often public."""
-    clean = _redactor(list(secrets))
+    redact = redactor(list(secrets))
+
+    def clean(text: str) -> str:
+        return XML_INVALID.sub("\ufffd", redact(text))  # control characters aren't allowed in XML 1.0
     root = ET.Element("testsuites", name=name, tests=str(len(results)),
                       failures=str(sum(r.error is None and not r.passed for r in results)),
                       errors=str(sum(r.error is not None for r in results)),
