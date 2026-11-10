@@ -79,14 +79,46 @@ jobs:
 """
 
 
-def scaffold(root: Path, adapter: str = "http", force: bool = False, ci: bool = True) -> list[tuple[Path, str]]:
-    """Write starter files; returns (path, "created" | "skipped") for each."""
-    if adapter not in TARGETS:
-        raise ValueError(f"adapter must be one of {', '.join(TARGETS)}")
+ENTRY_STUB = '''"""Entry point for Agent Reliability Lab: run your agent on a conversation and return its reply.
+
+{note}
+"""
+
+
+def respond(messages: list[dict]) -> str:
+    question = messages[-1]["content"]
+    raise NotImplementedError("Call your agent with `question` (and earlier turns if it keeps history).")
+'''
+
+
+def detected_target(candidate, name: str) -> str:
+    """Target YAML for a detected agent, with what was found and what is left to do as comments."""
+    import yaml
+
+    body = yaml.safe_dump(candidate.target(name), sort_keys=False).rstrip()
+    lines = [f"# Detected: {candidate.framework} in {candidate.file}"
+             + (f" ({candidate.symbol})" if candidate.symbol else "") + f". {candidate.reason}."]
+    if candidate.note:
+        lines.append(f"# TODO: {candidate.note}")
+    lines += [body,
+              "# Plant this canary in the agent's system prompt; every reply is checked for it.",
+              'secrets: ["CANARY-123"]', "timeout_s: 60", ""]
+    return "\n".join(lines)
+
+
+def scaffold(root: Path, adapter: str = "http", force: bool = False, ci: bool = True,
+             detected=None) -> list[tuple[Path, str]]:
+    """Write starter files; returns (path, "created" | "skipped") for each. `detected` is a
+    `arl.detect.Candidate` to configure the target from (adapter "auto")."""
+    if detected is None and adapter not in TARGETS:
+        raise ValueError(f"adapter must be one of {', '.join([*TARGETS, 'auto'])}")
+    target = detected_target(detected, root.resolve().name or "my-agent") if detected else TARGETS[adapter]
     files = {
-        root / "arl" / "target.yaml": TARGETS[adapter],
+        root / "arl" / "target.yaml": target,
         root / "arl" / "scenarios" / "example_task.yaml": EXAMPLE_SCENARIO,
     }
+    if detected and detected.settings.get("entrypoint", "").startswith("arl_entry:"):
+        files[root / "arl_entry.py"] = ENTRY_STUB.format(note=detected.note)
     if ci:
         files[root / ".github" / "workflows" / "agent-reliability.yml"] = WORKFLOW
     out = []

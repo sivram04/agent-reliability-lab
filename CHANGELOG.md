@@ -10,6 +10,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - `arl check`: fast, change-aware check that reports only new failures and fixes; `--hook stop` for Claude Code.
 - `builtin:quick`: 16 generic attacks that work on any agent through its `secrets:` canary.
 - MCP tool `check`; `python -m arl`; runs record their source (cli, check, mcp).
+- `arl detect` and `arl init` (auto by default): static scan finds the agent and configures the target; ranks
+  candidates, flags raw LLM helpers, routes with path parameters and graphs that need a wrapper (writes an
+  `arl_entry.py` stub). MCP tool `detect_agent`.
+- Framework adapters: `openai_agents`, `pydantic_ai`, `langchain`, `crewai`, `llamaindex`.
+- LangGraph adapter accepts zero-argument factories and graphs compiled with a checkpointer.
 
 ### Fixed
 - Smoke attack scenarios now use the target's `secrets:` instead of only the fixture's code.

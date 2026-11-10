@@ -4,7 +4,7 @@ reliability suites on an agent and explain the failures.
 Add to an MCP client config:
     {"mcpServers": {"arl": {"command": "arl", "args": ["mcp"]}}}
 
-Tools: check, list_suites, init_project, run_suite, list_runs, run_failures, compare_runs.
+Tools: check, detect_agent, list_suites, init_project, run_suite, list_runs, run_failures, compare_runs.
 Target secrets are redacted in everything returned to the client.
 """
 
@@ -64,11 +64,28 @@ def list_suites() -> dict[str, int]:
     return {f"builtin:{name}": len(suites.load(f"builtin:{name}")) for name in sorted(suites.BUILTIN)}
 
 
-def init_project(path: str = ".", adapter: str = "http") -> list[str]:
-    """Scaffold arl/target.yaml, a starter scenario and a CI workflow. Never overwrites files."""
+def detect_agent(path: str = ".") -> list[dict]:
+    """Find the AI agent in a project by static scan: framework, file, target settings, confidence,
+    and what still has to be done (for example a wrapper function). Call before init_project."""
+    from .detect import detect
+
+    return [c.__dict__ | {"ready": c.ready} for c in detect(Path(path))[:8]]
+
+
+def init_project(path: str = ".", adapter: str = "auto", candidate: int = 0) -> dict:
+    """Scaffold arl/target.yaml, a starter scenario and a CI workflow. Never overwrites files.
+    adapter "auto" configures the target from detect_agent's result number `candidate` (0 = best)."""
+    from .detect import detect
     from .init import scaffold
 
-    return [f"{status} {p}" for p, status in scaffold(Path(path), adapter)]
+    detected = None
+    if adapter == "auto":
+        found = detect(Path(path))
+        detected = found[candidate] if len(found) > candidate else None
+        adapter = "http" if detected is None else adapter
+    files = [f"{status} {p}" for p, status in scaffold(Path(path), adapter, detected=detected)]
+    return {"files": files, "detected": detected.__dict__ if detected else None,
+            "todo": detected.note if detected else "No agent found: edit arl/target.yaml by hand."}
 
 
 async def run_suite(target: str, suite: str = "builtin:smoke", repeats: int = 1, db: str = "arl.db",
@@ -127,7 +144,7 @@ def check(path: str = ".", force: bool = False) -> dict:
     return run_check(Path(path), force=force).to_dict()
 
 
-TOOLS = [check, list_suites, init_project, run_suite, list_runs, run_failures, compare_runs]
+TOOLS = [check, detect_agent, list_suites, init_project, run_suite, list_runs, run_failures, compare_runs]
 
 
 def build_server():

@@ -15,6 +15,7 @@ import random
 import sys
 import urllib.error
 import urllib.request
+import uuid
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
@@ -93,11 +94,17 @@ def _load(entrypoint: str | None, kind: str):
 
 
 def _langgraph_adapter(target: Target) -> Agent:
-    """A compiled LangGraph graph whose state has a `messages` key (MessagesState)."""
+    """A compiled LangGraph graph whose state has a `messages` key (MessagesState), or a function
+    with no arguments that builds one."""
     graph = _load(target.entrypoint, "langgraph")
+    if not hasattr(graph, "ainvoke") and callable(graph):
+        graph = graph()
 
     async def call(messages: list[dict]) -> str:
-        state = await graph.ainvoke({"messages": messages})
+        # A fresh thread per call: graphs compiled with a checkpointer require one, and the lab already
+        # sends the whole conversation, so state must not accumulate across calls.
+        config = {"configurable": {"thread_id": uuid.uuid4().hex}}
+        state = await graph.ainvoke({"messages": messages}, config=config)
         last = state["messages"][-1]
         return last.content if hasattr(last, "content") else last["content"]
 
@@ -137,6 +144,8 @@ ADAPTERS = {
 
 
 def build_agent(target: Target) -> Agent:
+    from . import frameworks  # noqa: F401  registers the framework adapters
+
     if target.adapter not in ADAPTERS:
         raise ValueError(f"unknown adapter {target.adapter!r}; available: {', '.join(sorted(ADAPTERS))} "
                          "(plugins can add more)")

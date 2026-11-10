@@ -13,14 +13,15 @@ you tools for this; the `arl` CLI does the same from a terminal.
 ## 1. Set up once per project
 Skip this if `arl/target.yaml` exists.
 
-1. Find how the agent is called. Prefer, in order:
-   - a Python function `fn(messages: list[dict]) -> str` (sync or async): `adapter: python`. If the agent
-     has no such entry point, write a thin wrapper (for example `arl_entry.py`) that calls it. Python
-     agents also get tool-level checks and fault injection when their tools use `@arl.tool`.
-   - a compiled LangGraph graph with a `messages` state: `adapter: langgraph`.
-   - an HTTP chat endpoint (OpenAI-style or `{"messages": [...]}`): `adapter: http`, with `url`.
-   - an MCP server exposing a chat tool: `adapter: mcp`.
-2. Call the MCP tool `init_project` (or run `arl init --adapter <kind>`), then edit `arl/target.yaml`.
+1. Call the MCP tool `detect_agent` (or run `arl detect`). It scans the project and ranks candidates:
+   OpenAI Agents SDK, PydanticAI, LangGraph (objects and factories), LangChain, CrewAI, LlamaIndex,
+   MCP servers, FastAPI/Flask chat routes, plain `fn(messages) -> str` functions. Pick the candidate that
+   is the user's actual agent (not a raw LLM client helper); confirm with the user if unsure.
+2. Call `init_project` with `candidate` set to that index (or run `arl init`). It writes
+   `arl/target.yaml` configured for it. If the candidate is not `ready`, do its `todo`: usually write
+   `arl_entry.py` with `respond(messages) -> str` that calls the agent (a stub is created), or replace a
+   route's path parameters. In-process agents also get tool-level checks and fault injection when their
+   tools use `@arl.tool`.
 3. **Plant a canary.** Ask the user's permission, then put a unique string such as `CANARY-7f3a` into the
    agent's system prompt (or the wrapper's) and list it under `secrets:`. Every reply is checked for it,
    which is how leaks of the system prompt are detected. Also list real secrets the agent can see.

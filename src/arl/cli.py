@@ -329,21 +329,60 @@ if __name__ == "__main__":
 @app.command()
 def init(
     path: Path = typer.Argument(Path("."), help="Project root."),
-    adapter: str = typer.Option("http", help="http | python | langgraph | mcp"),
+    adapter: str = typer.Option("auto", help="auto (detect the agent) | http | python | langgraph | mcp"),
     ci: bool = typer.Option(True, help="Also write a GitHub Actions workflow."),
     force: bool = typer.Option(False, help="Overwrite existing files."),
 ):
-    """Scaffold arl/target.yaml, a starter scenario and a CI workflow."""
+    """Scaffold arl/target.yaml (configured for the agent found in the project), a starter scenario
+    and a CI workflow."""
+    from .detect import detect
     from .init import scaffold
 
+    detected = None
+    if adapter == "auto":
+        found = detect(path)
+        detected = found[0] if found else None
+        if detected:
+            typer.echo(f"Found {detected.framework} in {detected.file}"
+                       + (f" ({detected.symbol})" if detected.symbol else "") + ".")
+        else:
+            typer.echo("No agent found; writing an HTTP template. See `arl detect` or pass --adapter.")
+            adapter = "http"
     try:
-        written = scaffold(path, adapter, force, ci)
+        written = scaffold(path, adapter, force, ci, detected)
     except ValueError as exc:
         raise typer.BadParameter(str(exc), param_hint="--adapter") from exc
     for f, status in written:
         typer.echo(f"  {status:<8} {f}")
-    typer.echo("\nNext: edit arl/target.yaml, start your agent, then run\n"
-               "  arl run --target arl/target.yaml --suite builtin:safety,arl/scenarios")
+    if detected and detected.note:
+        typer.echo(f"\nTo do: {detected.note}")
+    typer.echo("\nNext: plant the canary from arl/target.yaml in your system prompt, then run\n"
+               "  arl check            # fast, after every change\n"
+               "  arl run --target arl/target.yaml --suite builtin:safety,arl/scenarios   # full")
+
+
+@app.command()
+def detect(path: Path = typer.Argument(Path("."), help="Project root."),
+           as_json: bool = typer.Option(False, "--json", help="Machine-readable output.")):
+    """Find the AI agent in a project (static scan) and show the target settings to use."""
+    from .detect import detect as scan
+
+    found = scan(path)
+    if as_json:
+        typer.echo(json.dumps([c.__dict__ for c in found], indent=2))
+        return
+    if not found:
+        typer.echo("No agent found. Point a target at a function `respond(messages) -> str`, an HTTP chat "
+                   "endpoint or an MCP server; see `arl init --help`.")
+        return
+    for i, c in enumerate(found[:8], 1):
+        mark = "ready" if c.ready else "needs work"
+        typer.echo(f"{i}. {c.framework}  [{mark}, confidence {c.confidence:.0%}]")
+        typer.echo(f"   {c.file}" + (f"  {c.symbol}" if c.symbol else ""))
+        typer.echo("   " + "  ".join(f"{k}: {v}" for k, v in c.target().items() if k not in ("name", "version")))
+        if c.note:
+            typer.echo(f"   to do: {c.note}")
+    typer.echo("\n`arl init` configures the first one.")
 
 
 @app.command("suites")
