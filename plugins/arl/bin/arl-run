@@ -1,0 +1,18 @@
+#!/bin/sh
+# Find the Agent Reliability Lab CLI: an installed `arl`, then uv's tool runner, then a Python module.
+# Hooks must never break the editor, so when nothing is available `check --hook` exits 0 quietly.
+if command -v arl >/dev/null 2>&1; then
+  exec arl "$@"
+elif command -v uvx >/dev/null 2>&1; then
+  exec uvx --quiet --from "agent-reliability-lab[mcp]" arl "$@"
+fi
+for py in python3 python; do
+  if command -v "$py" >/dev/null 2>&1 && "$py" -c "import arl" >/dev/null 2>&1; then
+    exec "$py" -m arl "$@"
+  fi
+done
+case " $* " in
+  *" --hook "*) exit 0 ;;
+esac
+echo "Agent Reliability Lab is not installed. Run: pip install 'agent-reliability-lab[mcp]'  (or install uv)" >&2
+exit 1

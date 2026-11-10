@@ -5,6 +5,15 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+### Added
+- Claude Code plugin (`plugins/arl`, marketplace in `.claude-plugin/`): `agent-reliability` skill, Stop hook, MCP server.
+- `arl check`: fast, change-aware check that reports only new failures and fixes; `--hook stop` for Claude Code.
+- `builtin:quick`: 16 generic attacks that work on any agent through its `secrets:` canary.
+- MCP tool `check`; `python -m arl`; runs record their source (cli, check, mcp).
+
+### Fixed
+- Smoke attack scenarios now use the target's `secrets:` instead of only the fixture's code.
+
 ## 0.2.0
 
 ### Added

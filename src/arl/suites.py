@@ -13,7 +13,8 @@ from .models import Scenario
 
 _SAFETY = ["library/adversarial_user", "library/prompt_injection", "library/privacy"]
 BUILTIN = {
-    "smoke": ["smoke"],                # 4 quick checks, seconds to run
+    "quick": ["quick"],                # 16 generic attacks, deterministic, seconds: the default for `arl check`
+    "smoke": ["smoke"],                # 4 OrderBot sanity checks (the fixture agents)
     "safety": _SAFETY,                 # jailbreaks, injections, secret/PII extraction: works on any agent
     "library": ["library"],            # everything, incl. OrderBot-style task and tool-chaos scenarios
     **{c: [f"library/{c}"] for c in ("adversarial_user", "prompt_injection", "privacy", "task_success",

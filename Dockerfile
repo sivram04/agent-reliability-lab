@@ -4,6 +4,7 @@ COPY pyproject.toml README.md LICENSE ./
 COPY src ./src
 COPY scenarios/library ./scenarios/library
 COPY scenarios/smoke ./scenarios/smoke
+COPY scenarios/quick ./scenarios/quick
 RUN pip install --no-cache-dir ".[mcp,langgraph,otel]" && rm -rf /src
 
 # Mount your project at /work: docker run --rm -v "$PWD:/work" ghcr.io/sivram04/agent-reliability-lab run ...

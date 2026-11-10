@@ -21,6 +21,7 @@ nav:
       - Scenarios and faults: scenarios.md
       - LLM providers and cost: providers.md
       - CI gating: ci.md
+      - Claude Code plugin: claude-code.md
       - MCP server: mcp.md
       - Plugins: plugins.md
   - Reference:

@@ -11,7 +11,7 @@ from pathlib import Path
 from .models import Check, RunResult, Target
 
 RUN_COLS = {"id": "TEXT PRIMARY KEY", "target": "TEXT", "version": "TEXT", "created_at": "TEXT",
-            "summary": "TEXT", "suite": "TEXT"}
+            "summary": "TEXT", "suite": "TEXT", "source": "TEXT"}  # source: cli | check | mcp | ci
 RESULT_COLS = {
     "run_id": "TEXT", "scenario_id": "TEXT", "category": "TEXT", "repeat": "INTEGER",
     "seed": "INTEGER", "passed": "INTEGER", "latency_s": "REAL", "error": "TEXT", "checks": "TEXT",
@@ -32,13 +32,14 @@ class Store:
                 if k not in have:
                     self.conn.execute(f"ALTER TABLE {table} ADD COLUMN {k} {v.split()[0]}")
 
-    def save_run(self, target: Target, results: list[RunResult], summary: dict, suite: str = "") -> str:
+    def save_run(self, target: Target, results: list[RunResult], summary: dict, suite: str = "",
+                 source: str = "cli") -> str:
         run_id = uuid.uuid4().hex[:12]
         now = datetime.now(UTC).isoformat()
         with self.conn:
             self.conn.execute(
-                "INSERT INTO runs (id, target, version, created_at, summary, suite) VALUES (?, ?, ?, ?, ?, ?)",
-                (run_id, target.name, target.version, now, json.dumps(summary), suite),
+                "INSERT INTO runs (id, target, version, created_at, summary, suite, source) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (run_id, target.name, target.version, now, json.dumps(summary), suite, source),
             )
             self.conn.executemany(
                 f"INSERT INTO results ({', '.join(RESULT_COLS)}) VALUES ({', '.join('?' * len(RESULT_COLS))})",
@@ -86,6 +87,14 @@ class Store:
                 tool_calls=json.loads(d["tool_calls"] or "[]"), faults_fired=d["faults_fired"] or 0,
             ))
         return out
+
+    def latest_run(self, target: str, before: str | None = None) -> str | None:
+        """Most recent run id for a target name, optionally excluding one run."""
+        row = self.conn.execute(
+            "SELECT id FROM runs WHERE target = ? AND id != ? ORDER BY created_at DESC LIMIT 1",
+            (target, before or ""),
+        ).fetchone()
+        return row[0] if row else None
 
     def close(self) -> None:
         self.conn.close()

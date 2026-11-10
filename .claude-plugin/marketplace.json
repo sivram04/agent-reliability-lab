@@ -1,0 +1,12 @@
+{
+  "name": "agent-reliability-lab",
+  "owner": { "name": "sivram04" },
+  "description": "Agent Reliability Lab: test AI agents for prompt injection, leaks, tool failures and regressions while you build them.",
+  "plugins": [
+    {
+      "name": "arl",
+      "source": "./plugins/arl",
+      "description": "Tests the AI agent you're building while you build it: attacks, tool faults and regressions, checked in the background."
+    }
+  ]
+}

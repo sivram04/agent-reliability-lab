@@ -4,7 +4,7 @@ reliability suites on an agent and explain the failures.
 Add to an MCP client config:
     {"mcpServers": {"arl": {"command": "arl", "args": ["mcp"]}}}
 
-Tools: list_suites, init_project, run_suite, list_runs, run_failures, compare_runs.
+Tools: check, list_suites, init_project, run_suite, list_runs, run_failures, compare_runs.
 Target secrets are redacted in everything returned to the client.
 """
 
@@ -88,7 +88,7 @@ async def run_suite(target: str, suite: str = "builtin:smoke", repeats: int = 1,
     summary = summarize(results)
     store = Store(db)
     try:
-        run_id = store.save_run(tgt, results, summary, suite)
+        run_id = store.save_run(tgt, results, summary, suite, source="mcp")
     finally:
         store.close()
     return _redact({"run_id": run_id, "target": f"{tgt.name}@{tgt.version}", "summary": summary,
@@ -118,7 +118,16 @@ def compare_runs(base: str, new: str, db: str = "arl.db", alpha: float = 0.05) -
     return _compare(_results(base, db), _results(new, db), alpha)
 
 
-TOOLS = [list_suites, init_project, run_suite, list_runs, run_failures, compare_runs]
+def check(path: str = ".", force: bool = False) -> dict:
+    """Fast change-aware check of the agent in this project (builtin:quick plus arl/scenarios, no LLM cost).
+    Returns status (pass | failing | regressed | unchanged | no_target | unreachable | error), new failures
+    with the attack and the agent's reply, and scenarios fixed since the last check. Use after editing an agent."""
+    from .quickcheck import run_check
+
+    return run_check(Path(path), force=force).to_dict()
+
+
+TOOLS = [check, list_suites, init_project, run_suite, list_runs, run_failures, compare_runs]
 
 
 def build_server():

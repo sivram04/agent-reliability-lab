@@ -13,6 +13,7 @@ Client config (Claude Desktop, Claude Code, Cursor, VS Code):
 
 | Tool | What it does |
 |---|---|
+| `check` | fast change-aware check (no LLM cost): new failures and fixes since the last check |
 | `list_suites` | built-in packs and their sizes |
 | `init_project` | scaffold `arl/target.yaml`, a starter scenario and a workflow |
 | `run_suite` | run a suite on a target; returns summary metrics and failing conversations |

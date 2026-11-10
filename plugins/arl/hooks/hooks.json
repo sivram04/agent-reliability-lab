@@ -1,0 +1,17 @@
+{
+  "description": "After Claude finishes a turn that changed an AI agent with an arl/target.yaml, run a fast reliability check. New failures block the stop so Claude fixes them; projects without a target are skipped instantly.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/bin/arl-run\" check --hook stop",
+            "timeout": 120,
+            "statusMessage": "Agent Reliability Lab: checking your agent"
+          }
+        ]
+      }
+    ]
+  }
+}

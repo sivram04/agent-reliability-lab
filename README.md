@@ -14,6 +14,13 @@ arl init                     # writes arl/target.yaml, a starter scenario and a 
 arl run --target arl/target.yaml --suite builtin:safety,arl/scenarios
 ```
 
+**In Claude Code**, install the plugin and the lab works in the background: after Claude changes your
+agent, a fast check runs, and anything that broke gets fixed before the turn ends.
+```
+/plugin marketplace add sivram04/agent-reliability-lab
+/plugin install arl@agent-reliability-lab
+```
+
 📖 **Docs:** https://sivram04.github.io/agent-reliability-lab
 
 ## Why
@@ -35,6 +42,7 @@ statistics, and tells you whether a change made things worse.
 - **Cost:** tokens and estimated cost per run, split by agent, simulated user and judge.
 - **CI:** GitHub Action with PR comments, JUnit XML for any CI system, exit codes for regressions.
 - **Reports:** HTML report with step-by-step trace replay, dashboard across versions, OpenTelemetry export.
+- **Claude Code plugin:** a skill, a background check hook and MCP tools; `arl check` does the same anywhere.
 - **MCP server:** `arl mcp` lets Claude, Cursor or VS Code run suites and explain failures.
 - **Record and replay:** cassettes make real-LLM runs reproducible offline.
 - **Plugins** for custom checks, attacks, judge rubrics and adapters.

@@ -362,3 +362,29 @@ def mcp_cmd():
     except ImportError as exc:
         raise typer.BadParameter("install the MCP extra: pip install 'agent-reliability-lab[mcp]'") from exc
     serve()
+
+
+@app.command("check")
+def check_cmd(
+    path: Path = typer.Argument(Path("."), help="Project root."),
+    target: Path | None = typer.Option(None, help="Target YAML (default: arl/target.yaml)."),
+    suite: str | None = typer.Option(None, help="Default: builtin:quick plus arl/scenarios."),
+    force: bool = typer.Option(False, help="Run even if no files changed."),
+    as_json: bool = typer.Option(False, "--json", help="Machine-readable output."),
+    hook: str | None = typer.Option(None, help="Run as a Claude Code hook: 'stop'. Reads hook JSON on stdin."),
+):
+    """Fast, change-aware check while you build: reports only new failures and fixes.
+    Exit code 1 when scenarios that passed before now fail."""
+    from .quickcheck import hook_stop, render, run_check
+
+    if hook == "stop":
+        out = hook_stop(sys.stdin.read())
+        if out:
+            typer.echo(out)
+        return
+    if hook:
+        raise typer.BadParameter("supported hooks: stop", param_hint="--hook")
+    result = run_check(path, target, suite, force=force)
+    typer.echo(json.dumps(result.to_dict(), indent=2) if as_json else render(result))
+    if result.blocking:
+        raise typer.Exit(1)
