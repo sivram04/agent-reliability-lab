@@ -4,7 +4,7 @@ branding: { icon: shield, color: blue }
 
 inputs:
   target: { description: Target YAML file, required: true }
-  suite: { description: Scenario file or directory, required: false, default: scenarios }
+  suite: { description: "Scenario paths and/or builtin packs, comma-separated", required: false, default: "builtin:safety" }
   baseline: { description: Baseline results JSON (from arl run --results-out). Empty = no gate, report only., required: false, default: "" }
   repeats: { description: Repeats per scenario, required: false, default: "3" }
   alpha: { description: Significance level for the regression test, required: false, default: "0.05" }

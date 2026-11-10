@@ -1,0 +1,32 @@
+site_name: Agent Reliability Lab
+site_description: Chaos engineering for AI agents
+repo_url: https://github.com/sivram04/agent-reliability-lab
+site_url: https://sivram04.github.io/agent-reliability-lab/
+theme:
+  name: material
+  features: [content.code.copy, navigation.sections]
+  palette:
+    - scheme: default
+      toggle: { icon: material/brightness-7, name: Dark mode }
+    - scheme: slate
+      toggle: { icon: material/brightness-4, name: Light mode }
+markdown_extensions: [admonition, tables, pymdownx.superfences, toc: { permalink: true }]
+exclude_docs: |
+  results/
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Guides:
+      - Targets: targets.md
+      - Scenarios and faults: scenarios.md
+      - LLM providers and cost: providers.md
+      - CI gating: ci.md
+      - MCP server: mcp.md
+      - Plugins: plugins.md
+  - Reference:
+      - Metrics: metrics.md
+      - CLI: cli.md
+  - Case studies:
+      - Gateway guardrails: case-studies/01-gateway-guardrails.md
+validation:
+  links: {not_found: info, unrecognized_links: info}

@@ -5,6 +5,8 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.2.0
+
 ### Added
 - Apache-2.0 license, contributing guide, security policy, issue templates.
 - Native LLM providers: `openai:`, `anthropic:`, `gemini:`, `groq:`, `openrouter:`, `ollama:` specs.
@@ -14,6 +16,7 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - Plugin system: `@arl.check`, `@arl.mutator`, `@arl.adapter`, `arl.register_rubric`; loaded from the `arl.plugins` entry point, `ARL_PLUGINS` or `--plugin`. `criteria.extra` carries plugin settings.
 - `arl run --junit-out` writes JUnit XML for any CI system, with target secrets redacted.
 - `arl mcp`: the lab as an MCP server (run_suite, run_failures, compare_runs, list_runs, list_suites, init_project).
+- Docs site (MkDocs), release workflow (PyPI trusted publishing, GHCR image, GitHub release), wheel install check in CI.
 - `arl --version`.
 - `ARL_LLM_RPM` pacing for free-tier rate limits; judge outages leave a run unjudged instead of aborting it.
 

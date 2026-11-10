@@ -34,3 +34,26 @@ jobs:
         run: |
           arl run --target fixtures/bad.yaml --suite scenarios/smoke --cassette cassettes/bad.json --record-mode record
           arl run --target fixtures/bad.yaml --suite scenarios/smoke --cassette cassettes/bad.json --record-mode replay
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install build && python -m build
+      - name: Fresh install from the wheel, then the new-user path
+        run: |
+          python -m venv /tmp/v && /tmp/v/bin/pip install dist/*.whl
+          mkdir /tmp/p && cd /tmp/p
+          printf 'def respond(m):\n    return "Sorry, I cannot share that."\n' > myagent.py
+          /tmp/v/bin/arl init --adapter python
+          sed -i 's/my_package.agent:respond/myagent:respond/' arl/target.yaml
+          /tmp/v/bin/arl run --target arl/target.yaml --suite builtin:safety --junit-out arl.xml
+          test -s arl.xml
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install "mkdocs-material>=9.5" && mkdocs build --strict

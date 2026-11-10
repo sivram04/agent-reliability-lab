@@ -14,7 +14,7 @@ from . import suites
 from .adapters import build_agent
 from .cassette import Cassette
 from .llm import PROVIDERS, build_llm
-from .models import RunResult, Scenario, Target
+from .models import RunResult, Target
 from .runner import RunConfig, run_suite, summarize
 from .stats import compare as compare_runs
 from .store import Store
@@ -240,7 +240,7 @@ def ci_summary(
 @app.command()
 def redteam(
     target: Path = typer.Option(..., help="Target YAML file."),
-    seeds: Path = typer.Option(Path("scenarios/library"), help="Seed scenarios."),
+    seeds: str = typer.Option("builtin:library", help="Seed scenarios: paths and/or builtin packs, comma-separated."),
     out: Path = typer.Option(Path("scenarios/generated"), help="Where new failing variants are written."),
     rounds: int = typer.Option(2, min=1),
     per_seed: int = typer.Option(4, min=1, help="Mutations tried per surviving scenario per round."),
@@ -254,7 +254,7 @@ def redteam(
     sys.path.insert(0, str(Path.cwd()))
     tgt = Target.load(target)
     cfg = RunConfig(secrets=tgt.secrets)
-    report = asyncio.run(generate(build_agent(tgt), Scenario.load_dir(seeds), cfg, rounds, per_seed, seed,
+    report = asyncio.run(generate(build_agent(tgt), suites.load(seeds), cfg, rounds, per_seed, seed,
                                   build_llm(generator_llm, role="generator")))
     folder = out / tgt.name
     folder.mkdir(parents=True, exist_ok=True)

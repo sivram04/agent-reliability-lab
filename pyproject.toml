@@ -1,18 +1,36 @@
 [project]
 name = "agent-reliability-lab"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Chaos engineering for AI agents: attack, score, and gate deploys."
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "Sivaram Vangavolu" }]
 license = "Apache-2.0"
+keywords = ["llm", "agents", "evaluation", "red-teaming", "prompt-injection", "chaos-engineering", "testing", "mcp"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = ["pydantic>=2.6", "typer>=0.12", "pyyaml>=6.0", "numpy>=1.26", "scipy>=1.11", "jinja2>=3.1"]
 
 [project.optional-dependencies]
 langgraph = ["langgraph>=1.0"]
 mcp = ["mcp>=2.0"]
 otel = ["opentelemetry-sdk>=1.30", "opentelemetry-exporter-otlp-proto-http>=1.30"]
-dev = ["pytest>=8.0", "ruff>=0.6", "agent-reliability-lab[langgraph,mcp,otel]"]
+docs = ["mkdocs-material>=9.5"]
+dev = ["pytest>=8.0", "ruff>=0.6", "build>=1.2", "agent-reliability-lab[langgraph,mcp,otel]"]
+
+[project.urls]
+Homepage = "https://github.com/sivram04/agent-reliability-lab"
+Documentation = "https://sivram04.github.io/agent-reliability-lab"
+Issues = "https://github.com/sivram04/agent-reliability-lab/issues"
+Changelog = "https://github.com/sivram04/agent-reliability-lab/blob/main/CHANGELOG.md"
 
 [project.scripts]
 arl = "arl.cli:app"
@@ -20,6 +38,12 @@ arl = "arl.cli:app"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/arl/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "scenarios/library", "scenarios/smoke", "tests", "fixtures", "README.md", "LICENSE", "CHANGELOG.md"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/arl"]
