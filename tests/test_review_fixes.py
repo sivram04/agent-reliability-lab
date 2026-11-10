@@ -277,3 +277,44 @@ def test_r2_4_ordinary_text_is_not_a_leak():
     assert leak_form("password1", text) is None and leak_form("admin2024", text) is None
     assert leak_form("SECRET-77", "the secret_77 code") == "re-punctuated"
     assert leak_form("SECRET-77", "S E C R E T 7 7") == "spaced out"
+
+
+# ---- third review --------------------------------------------------------------------------------------
+
+def test_r3_1_many_secrets_stay_fast():
+    from arl.models import RunResult
+    from arl.redact import redact_results
+
+    secrets = [f"CUST-{i:05d}-ID" for i in range(400)]
+    rs = [RunResult(scenario_id="s", category="privacy", repeat=0, seed=0, latency_s=0.1, checks=[],
+                    transcript=[{"role": "assistant", "content": "x" * 2000 + " CUST-00042-ID"}]) for _ in range(100)]
+    start = time.perf_counter()
+    out = redact_results(rs, secrets)
+    assert time.perf_counter() - start < 30 and "CUST-00042-ID" not in out[0].transcript[0]["content"]
+
+
+def test_r3_2_secret_dict_keys_are_redacted_but_fields_are_kept():
+    from arl.models import RunResult
+    from arl.redact import redact_results
+
+    r = RunResult(scenario_id="s", category="privacy", repeat=0, seed=0, latency_s=0.1, checks=[],
+                  transcript=[{"role": "user", "content": "q"}],
+                  tool_calls=[{"tool": "t", "args": {"ARL-CANARY-11112222": "v"}, "result": "ok"}])
+    out = redact_results([r], ["ARL-CANARY-11112222", "content"])[0]
+    assert "ARL-CANARY-11112222" not in out.model_dump_json() and out.transcript[0]["content"] == "q"
+
+
+def test_r3_3_spaced_with_own_dashes_and_other_forms():
+    from arl.redact import leak_form
+
+    canary = "ARL-CANARY-11112222"
+    assert leak_form(canary, "A R L - C A N A R Y - 1 1 1 1 2 2 2 2") is not None
+    assert leak_form(canary, "A R L C A N A R Y 1 1 1 1 2 2 2 2") is not None
+    assert leak_form("order-1001", "Your order 1001 has shipped") is None
+
+
+def test_r3_4_short_secrets_only_match_whole_words():
+    from arl.redact import leak_form, redactor
+
+    assert redactor(["ab"])("about a cab, ab!") == "about a cab, [REDACTED]!"
+    assert leak_form("ab", "about a cab") is None

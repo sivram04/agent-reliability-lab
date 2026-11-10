@@ -1,7 +1,7 @@
 {
   "name": "arl",
   "displayName": "Agent Reliability Lab",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Tests the AI agent you're building while you build it: prompt injections, jailbreaks, secret leaks, tool faults and regressions, checked in the background after every change.",
   "author": { "name": "sivram04", "url": "https://github.com/sivram04" },
   "homepage": "https://sivram04.github.io/agent-reliability-lab",

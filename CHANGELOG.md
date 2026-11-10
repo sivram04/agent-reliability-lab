@@ -5,6 +5,24 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.3.0
+
+Release-readiness phase: three rounds of independent review, a real-agent case study, fuzz, load and security
+testing. 210 tests, 94% coverage, 0 medium/high security findings.
+
+### Known limitations
+- Leak detection and redaction don't recognise URL or HTML-entity encoding, homoglyphs, or base64 that starts
+  mid-token. Secrets shorter than 4 characters only match whole words.
+- Tool-dependent scenarios need in-process agents; HTTP and MCP agents are black boxes and those scenarios are
+  skipped with a reason.
+- Multimodal scenarios inject text through document tools; raw image and audio input isn't tested. Memory leaks
+  between separate sessions aren't tested.
+- The LLM judge's agreement was measured against an AI annotator (kappa 0.73, in-sample), not humans yet.
+- A hung synchronous Python agent is abandoned after `timeout_s`, but its thread can't be killed.
+- Interrupting `arl run` (Ctrl-C) loses that run's results; they are saved when the suite finishes.
+- CI workflows, the Docker image and the Claude Code plugin's live install haven't run yet (they need the
+  public repository).
+
 ### Added
 - Claude Code plugin (`plugins/arl`, marketplace in `.claude-plugin/`): `agent-reliability` skill, Stop hook, MCP server.
 - `arl check`: fast, change-aware check that reports only new failures and fixes; `--hook stop` for Claude Code.

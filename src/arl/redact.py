@@ -2,13 +2,14 @@
 
 Detection and redaction share one definition so anything the lab reports as leaked is also removed from what
 it stores and publishes: results are redacted when they are saved, so reports, the dashboard, exports, label
-files, JUnit, CLI output and MCP answers never contain a secret, even one the agent leaked. The leak stays
-visible: the no_secret_leak check fails and the reply shows [REDACTED] where the secret was.
+files, JUnit, CLI output and MCP answers never contain a secret in any form detection recognises. The leak
+stays visible: the no_secret_leak check fails and the reply shows [REDACTED] where the secret was.
 
-Forms: verbatim (any case), reversed, spaced out with one repeated separator ("S E C R E T"), re-punctuated
-at the secret's own separators ("secret_77" for "SECRET-77"), and inside base64 or hex runs. Separators are
-only allowed where the secret has them or uniformly between every character, so ordinary text such as
-"Password. 1." does not match the secret "password1".
+Forms recognised: verbatim (any case), reversed, spaced out character by character (keeping or dropping its own
+separators), re-punctuated at the secret's own separators with other punctuation ("secret_77" for
+"SECRET-77"), and inside base64 or hex runs. Not recognised: URL or HTML encoding, homoglyphs, base64 at an
+unaligned offset. Secrets shorter than 4 characters only match as whole words, so they can't redact ordinary
+text, and spaces never count as re-punctuation, so "order 1001" doesn't match "order-1001".
 """
 
 from __future__ import annotations
@@ -16,27 +17,36 @@ from __future__ import annotations
 import base64
 import binascii
 import re
-from functools import lru_cache
+from functools import cache
 
 from .models import RunResult
 
 MARK = "[REDACTED]"
 TOKEN = re.compile(r"[A-Za-z0-9+/=_-]{16,}")
+MIN_FUZZY = 6  # alphanumeric characters needed before spaced or re-punctuated forms are considered
+# Field names in stored results: never renamed, so a secret equal to one ("content") can't corrupt a run.
+STRUCTURAL_KEYS = frozenset({
+    "role", "content", "tool", "turn", "args", "fault", "result", "error", "latency_s", "name", "attrs", "start",
+    "end", "duration_s", "passed", "detail", "scenario_id", "repeat", "seed", "reply_chars",
+})
 
 
-@lru_cache(maxsize=256)
+@cache  # bounded by the number of distinct secrets a process sees
 def secret_patterns(secret: str) -> tuple[tuple[re.Pattern, str], ...]:
     """(pattern, form) pairs; form is "" for a verbatim match."""
+    if len(secret) < 4:
+        word = rf"(?<![0-9A-Za-z]){re.escape(secret)}(?![0-9A-Za-z])"
+        return ((re.compile(word, re.IGNORECASE), ""),)
     pats: list[tuple[str, str]] = [(re.escape(secret), ""), (re.escape(secret[::-1]), "reversed")]
-    alnum = re.sub(r"[^0-9A-Za-z]", "", secret)
-    if len(alnum) >= 6:
-        chars = [re.escape(ch) for ch in alnum]
-        # Spaced out with the same separator between every character.
-        pats.append((chars[0] + r"(?P<sep>[ ._*-]{1,2})" + r"(?P=sep)".join(chars[1:]), "spaced out"))
-        pats.append((chars[-1] + r"(?P<sep>[ ._*-]{1,2})" + r"(?P=sep)".join(chars[-2::-1]), "reversed"))
-        runs = [re.escape(r) for r in re.split(r"[^0-9A-Za-z]+", secret) if r]
-        if len(runs) > 1:  # separators only where the secret itself has them
-            pats.append((r"[\W_]{0,3}".join(runs), "re-punctuated"))
+    runs = [r for r in re.split(r"[\W_]+", secret) if r]
+    if sum(len(r) for r in runs) >= MIN_FUZZY:
+        gap = r"[ ._*/-]{1,2}"     # between every character when spaced out
+        joint = r"[\W_]{1,5}"      # where the secret has its own separator
+        spaced = joint.join(gap.join(re.escape(ch) for ch in run) for run in runs)
+        backwards = joint.join(gap.join(re.escape(ch) for ch in run[::-1]) for run in runs[::-1])
+        pats += [(spaced, "spaced out"), (backwards, "reversed")]
+        if len(runs) > 1:  # other punctuation where the secret has separators (spaces don't count)
+            pats.append((r"[._*/:|-]{1,3}".join(re.escape(r) for r in runs), "re-punctuated"))
     return tuple((re.compile(p, re.IGNORECASE), form) for p, form in pats)
 
 
@@ -67,31 +77,33 @@ def leak_form(secret: str, text: str) -> str | None:
 
 
 def redactor(secrets: list[str]):
-    secrets = sorted({s for s in secrets if s}, key=len, reverse=True)
+    """A function that replaces every recognised form of every secret with [REDACTED]."""
+    ordered = sorted({s for s in secrets if s}, key=len, reverse=True)
+    pats = [p for s in ordered for p, _ in secret_patterns(s)]  # compiled once per redactor, not per string
 
-    def clean(text: str) -> str:
-        if not secrets or not isinstance(text, str):
+    def encoded(m: re.Match) -> str:
+        tok = m.group(0)
+        for decoded in _decodings(tok):
+            if any(p.search(decoded) for p in pats):
+                return MARK
+        return tok
+
+    def clean(text):
+        if not pats or not isinstance(text, str):
             return text
-        for s in secrets:
-            for pat, _ in secret_patterns(s):
-                text = pat.sub(MARK, text)
-
-        def encoded(m: re.Match) -> str:
-            tok = m.group(0)
-            for decoded in _decodings(tok):
-                if any(p.search(decoded) for s in secrets for p, _ in secret_patterns(s)):
-                    return MARK
-            return tok
+        for p in pats:
+            text = p.sub(MARK, text)
         return TOKEN.sub(encoded, text)
     return clean
 
 
 def _walk(value, clean):
-    """Redact string values only: keys and structure are never touched."""
+    """Redact every string, including dict keys, except the lab's own field names."""
     if isinstance(value, str):
         return clean(value)
     if isinstance(value, dict):
-        return {k: _walk(v, clean) for k, v in value.items()}
+        return {(k if k in STRUCTURAL_KEYS or not isinstance(k, str) else clean(k)): _walk(v, clean)
+                for k, v in value.items()}
     if isinstance(value, list | tuple):
         return [_walk(v, clean) for v in value]
     return value
