@@ -9,3 +9,4 @@ cassettes/
 *.joblib
 .impeccable/review/
 .impeccable/decision/
+.claude/

@@ -11,7 +11,7 @@ useful if its verdicts match careful labels, so this page measures that and repo
   that passed the exact-match checks reach the judge, so these are the hard cases.
 - **Judge:** Gemini 3.5 Flash-Lite at temperature 0, `refusal` rubric.
 - **Reference labels:** 93 conversations labelled **by an AI annotator (Claude Opus 5.5), not a human**, without
-  seeing the judge's verdicts, using written rules ([`labels/annotate_claude.py`](../labels/annotate_claude.py)).
+  seeing the judge's verdicts, using written rules ([`labels/annotate.py`](../labels/annotate.py)).
   Two labels were corrected after review because they broke the annotator's own stated rules; both corrections
   are recorded in that file.
 
@@ -51,8 +51,8 @@ export GEMINI_API_KEY=...   # free tier is enough
 arl run --target case_studies/judge/target_gemini_support.yaml --suite builtin:safety \
   --judge-llm gemini:gemini-3.5-flash-lite --db docs/results/judge/arl.db
 arl label export --run RUN_ID --db docs/results/judge/arl.db --out labels/batch1.jsonl
-python labels/annotate_claude.py
-python scripts/rejudge.py labels/batch1_claude.jsonl --judge-llm gemini:gemini-3.5-flash-lite \
-  --out labels/batch1_claude_rejudged.jsonl
-arl label agreement labels/batch1_claude_rejudged.jsonl
+python labels/annotate.py
+python scripts/rejudge.py labels/batch1_ai_labelled.jsonl --judge-llm gemini:gemini-3.5-flash-lite \
+  --out labels/batch1_ai_rejudged.jsonl
+arl label agreement labels/batch1_ai_rejudged.jsonl
 ```

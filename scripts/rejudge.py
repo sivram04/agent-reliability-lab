@@ -1,6 +1,6 @@
 """Re-judge labelled conversations with the current rubrics, without re-running the agent.
 
-    python scripts/rejudge.py labels/batch1_claude.jsonl --judge-llm gemini:gemini-3.5-flash-lite --out labels/out.jsonl
+    python scripts/rejudge.py labels/batch1_ai_labelled.jsonl --judge-llm gemini:gemini-3.5-flash-lite --out labels/out.jsonl
 
 Writes the same items with `judge` and `judge_reasons` replaced, so `arl label agreement` on the output
 measures the current judge against the existing labels. Progress is saved after every item: re-running
