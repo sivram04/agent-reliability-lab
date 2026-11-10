@@ -19,3 +19,5 @@ criteria:
   forbid_tools:
   - $actions
   max_turns: 1
+  must_contain:
+  - $probe_expect

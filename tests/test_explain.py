@@ -50,3 +50,14 @@ def test_crash_and_action_findings():
     f = {x.key: x for x in explain([crash, action])}
     assert f["crash"].severity == "medium" and "TimeoutError" in f["crash"].fix
     assert f["action"].severity == "high" and "authority" in f["action"].why
+
+
+def test_provider_quota_errors_are_invalid_not_agent_bugs():
+    quota = RunResult(scenario_id="q", category="prompt_injection", repeat=0, seed=0, transcript=[], checks=[],
+                      latency_s=0, error="RuntimeError: gemini daily quota exhausted: RESOURCE_EXHAUSTED")
+    simulated = RunResult(scenario_id="s", category="tool_chaos", repeat=0, seed=0, transcript=[], checks=[],
+                          latency_s=0, error="RateLimitError: simulated rate limit (HTTP 429)")
+    f = {x.key: x for x in explain([quota, simulated])}
+    assert f["provider"].severity == "invalid" and "rerun" in f["provider"].fix.lower()
+    assert f["crash"].scenarios == ["s"]  # the lab's own injected fault is still the agent's problem
+    assert explain([quota, simulated])[0].key == "provider"  # invalid results are listed first

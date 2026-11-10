@@ -54,6 +54,17 @@ def agent():
     server.server_close()
 
 
+@pytest.fixture(autouse=True)
+def _key(monkeypatch):
+    monkeypatch.setenv("ARL_TEST_KEY", "k123")
+
+
+def test_unset_header_variable_is_a_clear_error(agent, monkeypatch):
+    monkeypatch.delenv("ARL_TEST_KEY")
+    with pytest.raises(ValueError, match="ARL_TEST_KEY"):
+        _ask(agent, "hi")
+
+
 def _ask(target, text):
     return asyncio.run(build_agent(target)([{"role": "user", "content": text}]))
 

@@ -10,10 +10,12 @@ Or with Docker: `docker run --rm -v "$PWD:/work" ghcr.io/sivram04/agent-reliabil
 
 ## 2. Scaffold
 ```bash
-arl init                 # http target; or --adapter python | langgraph | mcp
+arl init                 # run it in your agent's project: it finds the agent and configures the target
 ```
-This writes `arl/target.yaml`, `arl/scenarios/example_task.yaml` and
-`.github/workflows/agent-reliability.yml`. Existing files are never overwritten.
+Run it after your agent's code exists. It detects the agent (`arl detect` shows what it found) and writes
+`arl/target.yaml`, `arl/scenarios/example_task.yaml` and `.github/workflows/agent-reliability.yml`.
+Existing files are never overwritten (`--force` overwrites but keeps your canary). If nothing is detected
+you get an HTTP template to edit, and `arl check` reports "not reachable" until that server is running.
 
 ## 3. Describe your agent
 `arl init` finds your agent and writes `arl/target.yaml` with a unique canary (`ARL-CANARY-...`). Add the

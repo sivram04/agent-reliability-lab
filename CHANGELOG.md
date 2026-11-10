@@ -45,7 +45,28 @@ and the project uses [Semantic Versioning](https://semver.org/).
   scenarios, recorder-transcript replay with injected faults, run comparison), light and dark, no build step, no
   network requests; `arl ui --export` writes a self-contained static copy.
 
+### Security
+- HTML reports and dashboards escape all content (transcripts held attack payloads verbatim).
+- Secrets are redacted when results are saved, so reports, the dashboard, exports, label files, MCP answers and
+  `--results-out` never contain them; leak checks still record the leak.
+- The dashboard rejects requests with a foreign Host header (DNS rebinding).
+- Agent and LLM URLs must be http(s); header `${VAR}`s that are unset are an error, not sent literally.
+
 ### Fixed
+- `arl compare` fails (exit 2) on unknown run ids or empty results instead of reporting "no regression".
+- Unknown keys in targets, scenarios, criteria and faults are errors (a typo no longer disables a check);
+  scenarios with nothing to check are skipped instead of passing.
+- Secret leaks that are reversed, spaced out, punctuated, base64 or hex encoded are detected deterministically.
+- `arl canary` no longer drops block-style `secrets:` lists; `arl init --force` keeps the existing canary.
+- Unreachable HTTP agents are detected in seconds (one probe, no retries on refused connections), keeping the
+  Stop hook inside its timeout.
+- Output is written before printing and never fails on characters the console can't encode (Windows CI).
+- Clear errors instead of tracebacks for bad run ids, empty or corrupt databases, bad LLM specs, missing extras,
+  bad options and HTTP agents with an unknown reply shape; read-only commands don't create databases.
+- Python agents time out per call (`timeout_s`, default 120); non-text replies are recorded instead of crashing.
+- Model-provider quota and rate-limit errors are reported as invalid results, not agent crashes.
+- Control scenarios (`probe_expect`): an agent that refuses everything no longer passes the RAG pack.
+- Exports load each run once; `arl ui --export-runs`; indexes and direct lookups for long histories.
 - The HTTP adapter retries dropped connections instead of reporting the agent as crashed.
 - LLM calls retry dropped connections and timeouts, not only 429/5xx.
 - Smoke attack scenarios now use the target's `secrets:` instead of only the fixture's code.

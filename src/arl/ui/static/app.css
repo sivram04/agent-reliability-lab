@@ -86,6 +86,7 @@ main:focus, main:focus-visible { outline: none; }
 .stamp.high { color: var(--paper); background: var(--orange-text); border-color: var(--orange-text); }
 .stamp.medium { color: var(--orange-text); }
 .stamp.low { color: var(--ink-3); }
+.stamp.invalid { color: var(--amber); border-style: dashed; }
 .stamp.src { color: var(--ink-2); border-width: 1px; font-weight: 500; }
 
 /* Docket header and verdict */

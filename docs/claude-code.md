@@ -5,13 +5,16 @@ the lab checks your agent in the background and Claude fixes what breaks.
 
 ## Install
 ```bash
-pip install "agent-reliability-lab[mcp]"     # or have uv installed; the plugin falls back to uvx
+pip install "agent-reliability-lab[mcp]"     # into the environment your agent runs in
 ```
 In Claude Code:
 ```
 /plugin marketplace add sivram04/agent-reliability-lab
 /plugin install arl@agent-reliability-lab
 ```
+
+Install the lab where your agent's own packages are installed: the hook imports Python agents in-process. On
+Windows the hook runs through `sh`, which Git for Windows provides (Claude Code requires it anyway).
 
 ## What you get
 | Piece | What it does |

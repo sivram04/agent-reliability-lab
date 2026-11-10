@@ -125,7 +125,8 @@ def scaffold(root: Path, adapter: str = "http", force: bool = False, ci: bool = 
     if detected is None and adapter not in TARGETS:
         raise ValueError(f"adapter must be one of {', '.join([*TARGETS, 'auto'])}")
     target = detected_target(detected, root.resolve().name or "my-agent") if detected else TARGETS[adapter]
-    target = target.replace("CANARY-123", canary or new_canary())
+    existing = read_canary(root / "arl" / "target.yaml")  # --force must not rotate the canary
+    target = target.replace("CANARY-123", canary or existing or new_canary())
     files = {
         root / "arl" / "target.yaml": target,
         root / "arl" / "scenarios" / "example_task.yaml": EXAMPLE_SCENARIO,
@@ -139,9 +140,10 @@ def scaffold(root: Path, adapter: str = "http", force: bool = False, ci: bool = 
         if path.exists() and not force:
             out.append((path, "skipped"))
             continue
+        status = "overwritten" if path.exists() else "created"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(text.encode())
-        out.append((path, "created"))
+        out.append((path, status))
     return out
 
 
@@ -153,4 +155,6 @@ def read_canary(target_file: Path) -> str | None:
         data = yaml.safe_load(target_file.read_text(encoding="utf-8")) or {}
     except (OSError, yaml.YAMLError):
         return None
-    return next((s for s in data.get("secrets", []) if str(s).startswith("ARL-CANARY-")), None)
+    if not isinstance(data, dict):
+        return None
+    return next((s for s in data.get("secrets") or [] if str(s).startswith("ARL-CANARY-")), None)

@@ -12,11 +12,13 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import re
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import suites
-from .adapters import build_agent
+from .adapters import build_agent, reachable
 from .explain import explain
 from .models import RunResult, Target
 from .runner import RunConfig, run_suite, summarize
@@ -67,7 +69,7 @@ def fingerprint(root: Path) -> str:
             continue
         for p in entries:
             if p.is_dir():
-                if p.name not in SKIP_DIRS and not p.name.startswith("."):
+                if p.name not in SKIP_DIRS:  # dot-folders (.prompts) can hold the agent's prompts
                     stack.append(p)
             elif any(p.match(g) for g in WATCH):
                 st = p.stat()
@@ -115,7 +117,7 @@ def _describe(r: RunResult, secrets: list[str]) -> dict:
     })
     for s in secrets:
         if s:
-            text = text.replace(s, "[REDACTED]")
+            text = re.sub(re.escape(s), "[REDACTED]", text, flags=re.IGNORECASE)
     return json.loads(text)
 
 
@@ -123,6 +125,8 @@ def run_check(root: Path = Path("."), target: Path | None = None, suite: str | N
               db: Path | None = None, force: bool = False, confirm: int = 2) -> CheckResult:
     """`confirm`: re-runs of each new failure; it only counts as a regression if it fails every time."""
     root = root.resolve()
+    if str(root) not in sys.path:  # python agents import from the project, wherever the hook runs from
+        sys.path.insert(0, str(root))
     target = target or find_target(root)
     if target is None:
         return CheckResult("no_target", "No arl/target.yaml here; nothing to check. Run `arl init` to start.")
@@ -133,6 +137,8 @@ def run_check(root: Path = Path("."), target: Path | None = None, suite: str | N
                            state.get("pass_rate"))
     try:
         tgt = Target.load(target)
+        if tgt.adapter == "http" and tgt.url and not reachable(tgt.url):
+            return CheckResult("unreachable", f"Agent not reachable at {tgt.url}. Start it, then the check runs again.")
         scenarios = suites.bind(suites.load(suite or default_suite(root)), tgt, judge=False)[0]
         agent = build_agent(tgt)
         results = asyncio.run(run_suite(agent, scenarios, cfg=RunConfig(secrets=tgt.secrets)))

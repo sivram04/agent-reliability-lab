@@ -55,8 +55,10 @@ class Data:
     def _locate(self, run_id: str) -> Path:
         for db in self.dbs:
             con = sqlite3.connect(db)
-            hit = con.execute("SELECT 1 FROM runs WHERE id = ?", (run_id,)).fetchone()
-            con.close()
+            try:
+                hit = con.execute("SELECT 1 FROM runs WHERE id = ?", (run_id,)).fetchone()
+            finally:
+                con.close()
             if hit:
                 return db
         raise KeyError(run_id)
@@ -110,8 +112,11 @@ class Data:
                           "agentic": taxonomy.AGENTIC, "out_of_scope": taxonomy.OUT_OF_SCOPE},
                 "results": rows}
 
-    def replay(self, run_id: str, idx: int) -> dict:
-        r = self.results(run_id)[idx]
+    def replay(self, run_id: str, idx: int, results: list[RunResult] | None = None) -> dict:
+        results = results if results is not None else self.results(run_id)
+        if not 0 <= idx < len(results):
+            raise IndexError(f"no result {idx} in run {run_id}")
+        r = results[idx]
         s = self.scenario_index().get(r.scenario_id)
         return {"run": run_id, "idx": idx, "scenario": r.scenario_id, "repeat": r.repeat, "category": r.category,
                 "goal": s.goal if s else "", "passed": r.passed, "error": r.error, "latency_s": r.latency_s,
@@ -139,9 +144,10 @@ class Data:
         out = {"runs": runs, "run": {}, "replay": {}, "compare": {}}
         for r in runs:
             out["run"][r["id"]] = self.run(r["id"])
+            loaded = self.results(r["id"])  # once per run, not once per failing result
             for row in out["run"][r["id"]]["results"]:
                 if not row["passed"]:
-                    out["replay"][f"{r['id']}/{row['idx']}"] = self.replay(r["id"], row["idx"])
+                    out["replay"][f"{r['id']}/{row['idx']}"] = self.replay(r["id"], row["idx"], loaded)
         by_target: dict[str, list[dict]] = {}
         for r in runs:
             by_target.setdefault(r["target"], []).append(r)

@@ -6,13 +6,13 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from jinja2 import Environment, PackageLoader, select_autoescape
+from jinja2 import Environment, PackageLoader
 
 from .models import RunResult
 from .runner import summarize
 from .stats import compare, wilson_ci
 
-_env = Environment(loader=PackageLoader("arl", "templates"), autoescape=select_autoescape(["html"]))
+_env = Environment(loader=PackageLoader("arl", "templates"), autoescape=True)  # transcripts hold attack text
 _env.filters["pct"] = lambda v: "n/a" if v is None else f"{v:.0%}"
 _env.filters["tojson_pretty"] = lambda v: json.dumps(v, indent=2, default=str)
 

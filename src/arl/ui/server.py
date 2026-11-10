@@ -36,6 +36,10 @@ def _handler(data: Data):
             self._send(status, json.dumps(obj, default=str).encode(), "application/json")
 
         def do_GET(self):  # noqa: N802
+            host = (self.headers.get("Host") or "").rsplit(":", 1)[0].strip("[]").lower()
+            if host not in ("127.0.0.1", "localhost", "::1"):
+                # A page on another site that rebinds its DNS to 127.0.0.1 must not read transcripts.
+                return self._json({"error": "forbidden host"}, 403)
             url = urlparse(self.path)
             parts = [p for p in url.path.split("/") if p]
             try:

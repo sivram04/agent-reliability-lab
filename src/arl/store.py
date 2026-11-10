@@ -43,6 +43,9 @@ class Store:
 
     def save_run(self, target: Target, results: list[RunResult], summary: dict, suite: str = "",
                  source: str = "cli") -> str:
+        from .redact import redact_results
+
+        results = redact_results(results, target.secrets)  # stored results never contain a secret
         run_id = uuid.uuid4().hex[:12]
         now = datetime.now(UTC).isoformat()
         with self.conn:

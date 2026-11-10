@@ -83,6 +83,14 @@ ROLE = re.compile(r"^\$(\w+)$")
 PROBE = re.compile(r"\$probe(?::(\w+)|_question)")
 
 
+def _other_checks(s: Scenario) -> bool:
+    """Whether the scenario checks anything besides forbidden tools."""
+    c = s.criteria
+    return bool(c.must_contain or c.must_not_contain or c.forbid_secrets or c.expect_tools or c.forbid_patterns
+                or c.forbid_tool_args or c.max_tool_calls is not None or c.max_reply_chars is not None
+                or c.max_latency_s is not None or c.rubrics or c.extra)
+
+
 def _roles_used(s: Scenario) -> set[str]:
     names = [f.tool for f in s.faults] + list(s.criteria.expect_tools) + list(s.criteria.forbid_tools)
     return {m.group(1) for n in names if (m := ROLE.match(n))}
@@ -110,13 +118,27 @@ def bind(scenarios: list[Scenario], target: Target,
     declared = {t for names in roles.values() for t in names}
     kept, skipped = [], []
     for s in scenarios:
+        if not judge and not _other_checks(s) and not s.criteria.forbid_tools and not s.user_goal:
+            # Nothing deterministic to check: without a judge it would pass for free.
+            skipped.append((s.id, "has no checks; add criteria or --judge-llm"))
+            continue
         if s.criteria.judge_only and not judge:
             skipped.append((s.id, "only an LLM judge can grade it; add --judge-llm"))
             continue
         if _uses_tools(s) and target.adapter not in IN_PROCESS:
             skipped.append((s.id, f"needs tool visibility; the {target.adapter} adapter is a black box"))
             continue
-        missing = [f"tools.{r}" for r in sorted(_roles_used(s)) if not roles.get(r)]
+        # A role used only to forbid tools is vacuous when the agent has no such tools: drop that check
+        # instead of skipping the scenario. Roles the scenario actually exercises must be declared.
+        needed = {m.group(1) for n in [f.tool for f in s.faults] + list(s.criteria.expect_tools)
+                  if (m := ROLE.match(n))}
+        missing = [f"tools.{r}" for r in sorted(needed) if not roles.get(r)]
+        forbid_only = {m.group(1) for n in s.criteria.forbid_tools if (m := ROLE.match(n))} - needed
+        if any(not roles.get(r) for r in forbid_only) and not _other_checks(s):
+            # Dropping the forbid check would leave nothing to test: skip rather than pass vacuously.
+            missing += [f"tools.{r}" for r in sorted(forbid_only) if not roles.get(r)]
+        if "$probe_expect" in s.criteria.must_contain and not target.probe_expect and "control" in s.tags:
+            missing.append("probe_expect")  # a control scenario is meaningless without the expected answer
         missing += sorted({f"probes.{r}" if r else "probe_question" for r in _probes_used(s) if not _probe(target, r)})
         if missing:
             skipped.append((s.id, f"set {', '.join(missing)} in the target"))
@@ -130,7 +152,7 @@ def bind(scenarios: list[Scenario], target: Target,
         if _uses_tools(s) and target.adapter not in IN_PROCESS:
             skipped.append((s.id, f"needs tool visibility; the {target.adapter} adapter is a black box"))
             continue
-        if not _roles_used(s) and not _probes_used(s):
+        if not _roles_used(s) and not _probes_used(s) and "$probe_expect" not in s.criteria.must_contain:
             kept.append(s)
             continue
         data = s.model_dump()
@@ -142,7 +164,10 @@ def bind(scenarios: list[Scenario], target: Target,
             out = []
             for n in data["criteria"][key]:
                 m = ROLE.match(n)
-                out += (roles[m.group(1)] if key == "forbid_tools" else roles[m.group(1)][:1]) if m else [n]
+                out += (roles.get(m.group(1), []) if key == "forbid_tools" else roles[m.group(1)][:1]) if m else [n]
             data["criteria"][key] = out
+        data["criteria"]["must_contain"] = [target.probe_expect if c == "$probe_expect" else c
+                                            for c in data["criteria"]["must_contain"]
+                                            if c != "$probe_expect" or target.probe_expect]
         kept.append(Scenario.model_validate(data))
     return kept, skipped

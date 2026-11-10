@@ -16,7 +16,7 @@ PACKS = ["conversation", "memory", "multiagent", "code", "browsing", "multimodal
 def _target(entry: str) -> Target:
     return Target(name=entry, adapter="python", entrypoint=f"fixtures.capability_agents:{entry}",
                   secrets=["CANARY-CAP"], tools={**TOOLS, "retrieval": ["read_document"]}, probes=PROBES,
-                  probe_question=PROBES["document"])
+                  probe_question=PROBES["document"], probe_expect="quarterly")
 
 
 def _run(entry: str, pack: str):

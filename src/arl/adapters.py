@@ -13,6 +13,7 @@ import inspect
 import json
 import os
 import random
+import re
 import sys
 import threading
 import urllib.error
@@ -34,14 +35,20 @@ async def in_daemon_thread(func, *args):
     future = loop.create_future()
     ctx = contextvars.copy_context()  # tool interception and usage metering live in context variables
 
+    def deliver(callback) -> None:
+        try:
+            loop.call_soon_threadsafe(callback)
+        except RuntimeError:
+            pass  # the loop already closed: the run timed this agent out and moved on
+
     def work():
         try:
             result = ctx.run(func, *args)
         except BaseException as exc:  # noqa: BLE001  handed to the awaiting coroutine
             # Bind now: Python deletes `exc` when the except block ends, before the callback runs.
-            loop.call_soon_threadsafe(lambda err=exc: future.done() or future.set_exception(err))
+            deliver(lambda err=exc: future.done() or future.set_exception(err))
         else:
-            loop.call_soon_threadsafe(lambda res=result: future.done() or future.set_result(res))
+            deliver(lambda res=result: future.done() or future.set_result(res))
 
     threading.Thread(target=work, daemon=True, name="arl-agent").start()
     return await future
@@ -68,7 +75,12 @@ def _http_adapter(target: Target) -> Agent:
     headers = {"Content-Type": "application/json",
                **{k: os.path.expandvars(v) for k, v in target.headers.items()}}
 
+
     def post(messages: list[dict]) -> str:
+        unset = sorted({m for v in headers.values() for m in re.findall(r"\$\{(\w+)\}", os.path.expandvars(v))})
+        if unset:
+            raise ValueError(f"headers use unset environment variable(s): {', '.join(unset)}")
+        headers.update({k: os.path.expandvars(v) for k, v in target.headers.items()})
         payload: dict = {"messages": messages}
         if target.system_prompt:
             payload["messages"] = [{"role": "system", "content": target.system_prompt}, *messages]
@@ -96,7 +108,10 @@ def _http_adapter(target: Target) -> Agent:
                 usage.record("agent", body.get("model") or target.model,
                              u.get("prompt_tokens", 0), u.get("completion_tokens", 0))
             return body["choices"][0]["message"]["content"] or ""
-        return body["content"]
+        if isinstance(body, dict) and "content" in body:
+            return body["content"]
+        raise ValueError("agent reply has neither OpenAI-style 'choices' nor a 'content' field: "
+                         f"{json.dumps(body)[:120]}")
 
     async def call(messages: list[dict]) -> str:
         for attempt in range(target.max_retries + 1):
@@ -107,14 +122,34 @@ def _http_adapter(target: Target) -> Agent:
                 if exc.code not in (429, 500, 502, 503) or attempt == target.max_retries:
                     raise
                 await asyncio.sleep(min(60, 2 ** (attempt + 1)) + random.random())
-            except (urllib.error.URLError, ConnectionError, TimeoutError):
+            except (urllib.error.URLError, ConnectionError, TimeoutError) as exc:
                 # A dropped connection is a network blip, not the agent crashing: retry before failing.
-                if attempt == target.max_retries:
+                # A refused one means nothing is listening: retrying only delays the answer.
+                if attempt == target.max_retries or _refused(exc):
                     raise
                 await asyncio.sleep(min(30, 2 ** attempt) + random.random())
         raise RuntimeError("unreachable")
 
     return call
+
+
+def _refused(exc: BaseException) -> bool:
+    reason = getattr(exc, "reason", exc)
+    return isinstance(reason, ConnectionRefusedError) or "refused" in str(reason).lower()
+
+
+def reachable(url: str, timeout: float = 2.0) -> bool:
+    """One quick TCP connect to the agent's host, before spending a suite on an agent that isn't running."""
+    import socket
+    from urllib.parse import urlparse
+
+    u = urlparse(url)
+    port = u.port or (443 if u.scheme == "https" else 80)
+    try:
+        with socket.create_connection((u.hostname, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
 
 
 def _load(entrypoint: str | None, kind: str):

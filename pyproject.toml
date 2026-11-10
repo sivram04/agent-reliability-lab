@@ -64,7 +64,7 @@ packages = ["src/arl"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src", "."]
-filterwarnings = ["ignore::DeprecationWarning:langsmith.*", "error::ResourceWarning"]  # leaked handles fail tests
+filterwarnings = ["ignore::DeprecationWarning:langsmith.*", "error::ResourceWarning", "error::pytest.PytestUnhandledThreadExceptionWarning"]  # leaks fail tests
 
 [tool.ruff]
 line-length = 132

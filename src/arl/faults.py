@@ -21,7 +21,7 @@ from collections.abc import Callable
 from contextvars import ContextVar
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 FaultMode = Literal[
     "error", "timeout", "latency", "rate_limit", "bad_data", "partial", "schema_drift", "inject", "poison"
@@ -29,6 +29,8 @@ FaultMode = Literal[
 
 
 class Fault(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     tool: str = "*"  # tool name, or "*" for every tool
     mode: FaultMode
     rate: float = 1.0  # probability per call, drawn from the seeded RNG

@@ -39,6 +39,11 @@ def main(
     plugin: list[str] = typer.Option([], "--plugin", help="Import a plugin module (repeatable). Also: ARL_PLUGINS."),
 ) -> None:
     """Agent Reliability Lab: chaos engineering for AI agents."""
+    for stream in (sys.stdout, sys.stderr):
+        try:  # redirected output on Windows defaults to a legacy code page: never crash on a character
+            stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError):
+            pass
     sys.path.insert(0, str(Path.cwd()))
     from . import plugins
 
@@ -117,7 +122,18 @@ def run(
     sys.path.insert(0, str(Path.cwd()))
     if record_mode != "off" and not cassette:
         raise typer.BadParameter("--record-mode needs --cassette")
-    setup_otel(otel)
+    if record_mode not in ("off", "record", "replay"):
+        raise typer.BadParameter("must be off, record or replay", param_hint="--record-mode")
+    if not 0.0 <= min_pass_rate <= 1.0:
+        raise typer.BadParameter("must be between 0 and 1, e.g. 0.95", param_hint="--min-pass-rate")
+    for out in (json_out, results_out, junit_out):
+        if out is not None:
+            out.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        setup_otel(otel)
+    except ImportError as exc:
+        raise typer.BadParameter(f"needs the otel extra: pip install 'agent-reliability-lab[otel]' ({exc})",
+                                 param_hint="--otel") from exc
     tgt = _load_target(target)
     load_prices(tgt.prices)
     try:
@@ -131,8 +147,13 @@ def run(
     replay = record_mode == "replay"
     # Replay never builds the real agent or LLMs, so it works offline.
     agent = None if replay else _build(tgt, target)
-    user = None if replay else build_llm(user_llm, role="user")
-    judge = None if replay else build_llm(judge_llm, temperature=0.0, role="judge")  # repeatable verdicts
+    try:
+        user = None if replay else build_llm(user_llm, role="user")
+        judge = None if replay else build_llm(judge_llm, temperature=0.0, role="judge")  # repeatable verdicts
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc), param_hint="--user-llm/--judge-llm") from exc
+    if not scenarios:
+        typer.echo("warning: no scenarios to run (pass --suite, e.g. builtin:quick)")
     if tape:
         agent = tape.wrap(agent)
         user = tape.wrap(user, "user") if user_llm else None
@@ -146,6 +167,18 @@ def run(
     summary = summarize(results)
     with Store(db) as store:
         run_id = store.save_run(tgt, results, summary, str(suite or ""))
+    # Write machine-readable outputs before printing anything, so CI always gets them.
+    if json_out:
+        json_out.write_text(json.dumps({"run_id": run_id, "target": tgt.name, "version": tgt.version, **summary},
+                                       indent=2), encoding="utf-8")
+    if results_out:
+        from .redact import redact_results
+
+        _write_results(results_out, redact_results(results, tgt.secrets))
+    if junit_out:
+        from .junit import write as write_junit
+
+        write_junit(junit_out, results, tgt.name, tgt.secrets)
 
     typer.echo(f"run {run_id}  target={tgt.name}@{tgt.version}  scenarios={len(scenarios)}  repeats={repeats}")
     if verbose:
@@ -175,15 +208,9 @@ def run(
     typer.echo(f"\n{headline(findings, len(scenarios))}")
     if findings:
         typer.echo(render_findings(findings) + ("" if verbose else "\n(--verbose lists every failing run)"))
-    if json_out:
-        json_out.write_text(json.dumps({"run_id": run_id, "target": tgt.name, "version": tgt.version, **summary},
-                                       indent=2))
-    if results_out:
-        _write_results(results_out, results)
-    if junit_out:
-        from .junit import write as write_junit
-
-        write_junit(junit_out, results, tgt.name, tgt.secrets)
+    if not results and min_pass_rate > 0:
+        typer.echo("gate: no scenarios ran, so --min-pass-rate cannot be met")
+        raise typer.Exit(1)
     if summary["pass_rate"] < min_pass_rate:
         raise typer.Exit(1)
 
@@ -196,15 +223,32 @@ def _write_results(path: Path, results: list[RunResult]) -> None:
 def _load_results(spec: str, db: Path) -> list[RunResult]:
     """A run id in the database, or a results JSON file from --results-out."""
     path = Path(spec)
-    if path.suffix == ".json" and path.exists():
-        return [RunResult.model_validate(r) for r in json.loads(path.read_text(encoding="utf-8"))]
-    with Store(db) as store:
-        return store.load_results(spec)
+    if path.suffix == ".json":
+        if not path.is_file():
+            raise typer.BadParameter(f"{spec}: results file not found")
+        results = [RunResult.model_validate(r) for r in json.loads(path.read_text(encoding="utf-8"))]
+    else:
+        _require_db(db)
+        with Store(db) as store:
+            results = store.load_results(spec)
+    if not results:
+        # An unknown id must never look like "no regression" to a CI gate.
+        raise typer.BadParameter(f"{spec}: no results (unknown run id in {db}, or an empty results file)")
+    return results
+
+
+def _require_db(db: Path) -> None:
+    """Read-only commands must not create an empty database at a mistyped path."""
+    if not db.is_file():
+        raise typer.BadParameter(f"{db}: no results database here; run `arl run` first or pass --db",
+                                 param_hint="--db")
+    _check_dbs([db])
 
 
 @app.command()
 def runs(db: Path = typer.Option(Path("arl.db"))):
     """List past runs."""
+    _require_db(db)
     with Store(db) as store:
         rows = store.list_runs()
     for run_id, name, version, created, summary in rows:
@@ -246,10 +290,17 @@ def report(
     """HTML report card with failing traces you can replay step by step."""
     from .report import render_report, write
 
+    _require_db(db)
     with Store(db) as store:
+        listed = store.list_runs()
+        if not listed:
+            raise typer.BadParameter(f"{db}: no runs yet", param_hint="--db")
         if run_id == "latest":
-            run_id = store.list_runs()[0][0]
-        run = store.get_run(run_id)
+            run_id = listed[0][0]
+        try:
+            run = store.get_run(run_id)
+        except KeyError as exc:
+            raise typer.BadParameter(f"no run {run_id!r} in {db}; see `arl runs`", param_hint="RUN_ID") from exc
         results = store.load_results(run_id)
     write(out, render_report(run, results, _load_results(baseline, db) if baseline else None))
     write(out.with_suffix(".json"), json.dumps({**run, "results": [r.model_dump() for r in results]}, default=str))
@@ -435,13 +486,23 @@ def canary(path: Path = typer.Argument(Path("."), help="Project root.")):
         raise typer.BadParameter("no arl/target.yaml; run `arl init` first", param_hint="path")
     if not read_canary(target):
         token = new_canary()
+        before = _load_target(target).secrets
         text = target.read_text(encoding="utf-8")
-        if re.search(r"^secrets:\s*\[", text, re.M):
-            text = re.sub(r"^secrets:\s*\[", f'secrets: ["{token}", ', text, count=1, flags=re.M)
+        flow = re.search(r"^secrets:[ \t]*\[", text, re.M)
+        block = re.search(r"^secrets:[ \t]*\n", text, re.M)
+        if flow:
+            text = text[:flow.end()] + f'"{token}", ' + text[flow.end():]
             text = text.replace(f'"{token}", ]', f'"{token}"]')
+        elif block:
+            text = text[:block.end()] + f'  - "{token}"\n' + text[block.end():]
+        elif re.search(r"^secrets:", text, re.M):
+            raise typer.BadParameter(f"{target}: can't add to this secrets: entry; add {token} to it by hand")
         else:
             text = text.rstrip() + f'\nsecrets: ["{token}"]\n'
         target.write_bytes(text.encode())
+        after = _load_target(target).secrets
+        if set(after) != set(before) | {token}:  # never lose a secret the user had configured
+            raise typer.BadParameter(f"{target}: adding the canary would change existing secrets; add {token} by hand")
         typer.echo(f"Added canary {token} to {target}.")
     _print_canary(path)
 

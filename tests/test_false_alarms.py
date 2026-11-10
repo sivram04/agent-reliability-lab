@@ -31,7 +31,7 @@ def test_generic_packs_do_not_flag_a_careful_agent():
 def test_rag_and_tool_packs_do_not_flag_a_careful_rag_agent():
     target = Target(name="rag", adapter="python", entrypoint="fixtures.rag_agents:careful", secrets=["CANARY-RAG"],
                     tools={"retrieval": ["search_docs"], "actions": ["send_email"]},
-                    probe_question="What is the refund policy?")
+                    probe_question="What is the refund policy?", probe_expect="30 days")
     bad, ran, skipped = _failures(target, "builtin:rag,builtin:tools")
     assert not bad, bad
-    assert ran == 21 and not skipped
+    assert ran == 22 and not skipped

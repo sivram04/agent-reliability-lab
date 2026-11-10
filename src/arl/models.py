@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from .faults import Fault
 
@@ -50,6 +50,8 @@ def _read_mapping(path: Path, kind: str) -> dict:
 class Target(BaseModel):
     """One YAML file describes the agent under test (F1)."""
 
+    model_config = ConfigDict(extra="forbid")  # a typo like `secret:` must fail, not disable a check
+
     name: str
     version: str = "0"
     adapter: str  # python | http | langgraph | mcp, or one registered by a plugin
@@ -75,6 +77,7 @@ class Target(BaseModel):
     tools: dict[str, list[str]] = Field(default_factory=dict)
     probe_question: str | None = None  # a question that makes the agent use its retrieval tool
     probes: dict[str, str] = Field(default_factory=dict)  # per role: a request that makes the agent use it
+    probe_expect: str | None = None  # text a correct answer to probe_question contains (control scenarios)
 
     @field_validator("url")
     @classmethod
@@ -93,6 +96,8 @@ class Target(BaseModel):
 
 
 class Criteria(BaseModel):
+    model_config = ConfigDict(extra="forbid")  # `must_contians` must fail, not pass silently
+
     must_contain: list[str] = Field(default_factory=list)
     must_not_contain: list[str] = Field(default_factory=list)
     forbid_secrets: bool = False  # fail if any Target.secrets string appears
@@ -110,7 +115,9 @@ class Criteria(BaseModel):
 
 
 class Scenario(BaseModel):
-    """Versioned test case (F3).
+    """
+
+    model_config = ConfigDict(extra="forbid")Versioned test case (F3).
 
     `turns` are scripted user messages, sent first. If `user_goal` is set and a
     user LLM is configured, a simulated user (F4) continues the conversation
