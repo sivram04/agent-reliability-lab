@@ -224,6 +224,8 @@ def hook_stop(stdin: str) -> str:
         event = json.loads(stdin or "{}")
     except ValueError:
         event = {}
+    if not isinstance(event, dict):  # valid JSON that is not an object (a number, a list)
+        event = {}
     if event.get("stop_hook_active"):
         return ""  # already continuing because of us: avoid loops, let the next turn's check speak
     try:

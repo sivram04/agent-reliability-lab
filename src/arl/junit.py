@@ -12,6 +12,8 @@ from pathlib import Path
 
 from .models import RunResult
 
+XML_INVALID = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]")
+
 
 def _redactor(secrets: list[str]):
     pats = [re.compile(re.escape(s), re.IGNORECASE) for s in sorted(secrets, key=len, reverse=True) if s]
@@ -19,7 +21,7 @@ def _redactor(secrets: list[str]):
     def clean(text: str) -> str:
         for p in pats:
             text = p.sub("[REDACTED]", text)
-        return text
+        return XML_INVALID.sub("�", text)  # control characters are not allowed in XML 1.0
     return clean
 
 

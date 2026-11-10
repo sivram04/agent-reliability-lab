@@ -52,6 +52,38 @@ app.add_typer(label_app, name="label")
 LLM_HELP = f"'openai' (ARL_LLM_* env vars), PROVIDER:MODEL ({', '.join(PROVIDERS)}) or 'python:module:fn'."
 
 
+def _load_target(path: Path) -> Target:
+    from .models import ConfigError
+
+    try:
+        return Target.load(path)
+    except ConfigError as exc:
+        raise typer.BadParameter(str(exc), param_hint="--target") from exc
+
+
+def _build(tgt: Target, path: Path):
+    """Build the agent, turning import and wiring problems into a message about the target file."""
+    try:
+        return build_agent(tgt)
+    except (ValueError, ImportError, AttributeError, TypeError) as exc:
+        raise typer.BadParameter(f"{path}: can't load the agent: {exc}", param_hint="--target") from exc
+
+
+def _check_dbs(dbs: list[Path]) -> None:
+    import sqlite3
+
+    for db in dbs:
+        try:
+            con = sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True)
+            try:
+                con.execute("SELECT id, target, summary FROM runs LIMIT 1").fetchall()
+            finally:
+                con.close()
+        except sqlite3.DatabaseError as exc:
+            raise typer.BadParameter(f"{db}: not an Agent Reliability Lab results database ({exc})",
+                                     param_hint="--db") from exc
+
+
 def _usage_line(role: str, row: dict) -> str:
     cost = "cost n/a" if row["cost_usd"] is None else f"${row['cost_usd']:.4f}"
     return f"{role}: {row['input_tokens']}+{row['output_tokens']} ({cost})"
@@ -86,7 +118,7 @@ def run(
     if record_mode != "off" and not cassette:
         raise typer.BadParameter("--record-mode needs --cassette")
     setup_otel(otel)
-    tgt = Target.load(target)
+    tgt = _load_target(target)
     load_prices(tgt.prices)
     try:
         scenarios, skipped = suites.bind(suites.load(suite), tgt, judge=bool(judge_llm) or record_mode == "replay")
@@ -98,7 +130,7 @@ def run(
     tape = Cassette(cassette, record_mode) if cassette else None
     replay = record_mode == "replay"
     # Replay never builds the real agent or LLMs, so it works offline.
-    agent = None if replay else build_agent(tgt)
+    agent = None if replay else _build(tgt, target)
     user = None if replay else build_llm(user_llm, role="user")
     judge = None if replay else build_llm(judge_llm, temperature=0.0, role="judge")  # repeatable verdicts
     if tape:
@@ -273,9 +305,9 @@ def redteam(
     from .redteam import generate
 
     sys.path.insert(0, str(Path.cwd()))
-    tgt = Target.load(target)
+    tgt = _load_target(target)
     cfg = RunConfig(secrets=tgt.secrets)
-    report = asyncio.run(generate(build_agent(tgt), suites.load(seeds), cfg, rounds, per_seed, seed,
+    report = asyncio.run(generate(_build(tgt, target), suites.load(seeds), cfg, rounds, per_seed, seed,
                                   build_llm(generator_llm, role="generator")))
     folder = out / tgt.name
     folder.mkdir(parents=True, exist_ok=True)
@@ -495,7 +527,7 @@ def coverage(
     scenarios = suites.load(suite)
     skipped: list[tuple[str, str]] = []
     if target:
-        scenarios, skipped = suites.bind(scenarios, Target.load(target), judge=judge)
+        scenarios, skipped = suites.bind(scenarios, _load_target(target), judge=judge)
     cov = cover(scenarios)
     names = {"capability": CAPABILITIES, "owasp": OWASP_LLM, "agentic": AGENTIC}
     titles = {"capability": "Capabilities", "owasp": "OWASP Top 10 for LLM Apps (2025)",
@@ -531,7 +563,7 @@ def generate_cmd(
     """Write attacks specific to your agent (its domain, secrets, actions and rules), for review."""
     from .generate import Profile, extract_profile, generate, write
 
-    tgt = Target.load(target)
+    tgt = _load_target(target)
     default_profile = target.parent / "profile.yaml"
     model = build_llm(llm, temperature=0.9, role="generator") if llm else None
     if profile or default_profile.is_file():
@@ -583,6 +615,7 @@ def ui(
     if not dbs:
         raise typer.BadParameter("no result database found; run `arl check` or `arl run` first, or pass --db",
                                  param_hint="--db")
+    _check_dbs(dbs)
     data = Data(dbs)
     if export:
         index = export_site(data, export)

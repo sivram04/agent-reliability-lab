@@ -7,12 +7,14 @@ return the assistant reply as a string.
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import importlib
 import inspect
 import json
 import os
 import random
 import sys
+import threading
 import urllib.error
 import urllib.request
 import uuid
@@ -25,13 +27,33 @@ from .models import Target
 Agent = Callable[[list[dict]], Awaitable[str]]
 
 
+async def in_daemon_thread(func, *args):
+    """Run blocking agent code in a daemon thread. Unlike asyncio.to_thread, a thread that never returns
+    (a hung agent) doesn't block the lab from finishing after the timeout fires."""
+    loop = asyncio.get_running_loop()
+    future = loop.create_future()
+    ctx = contextvars.copy_context()  # tool interception and usage metering live in context variables
+
+    def work():
+        try:
+            result = ctx.run(func, *args)
+        except BaseException as exc:  # noqa: BLE001  handed to the awaiting coroutine
+            # Bind now: Python deletes `exc` when the except block ends, before the callback runs.
+            loop.call_soon_threadsafe(lambda err=exc: future.done() or future.set_exception(err))
+        else:
+            loop.call_soon_threadsafe(lambda res=result: future.done() or future.set_result(res))
+
+    threading.Thread(target=work, daemon=True, name="arl-agent").start()
+    return await future
+
+
 def _python_adapter(target: Target) -> Agent:
     func = _load(target.entrypoint, "python")
 
     async def call(messages: list[dict]) -> str:
         if inspect.iscoroutinefunction(func):
             return await func(messages)
-        return await asyncio.to_thread(func, messages)
+        return await in_daemon_thread(func, messages)
 
     return call
 
@@ -158,4 +180,16 @@ def build_agent(target: Target) -> Agent:
     if target.adapter not in ADAPTERS:
         raise ValueError(f"unknown adapter {target.adapter!r}; available: {', '.join(sorted(ADAPTERS))} "
                          "(plugins can add more)")
-    return ADAPTERS[target.adapter](target)
+    return _with_timeout(ADAPTERS[target.adapter](target), target.timeout_s)
+
+
+def _with_timeout(agent: Agent, seconds: float) -> Agent:
+    """Bound every agent call. A sync agent stuck in its worker thread can't be killed, but the lab stops
+    waiting for it, records a TimeoutError for that scenario and carries on with the suite."""
+    async def call(messages: list[dict]):
+        try:
+            return await asyncio.wait_for(agent(messages), seconds)
+        except TimeoutError:
+            raise TimeoutError(f"agent did not reply within {seconds:g}s (target timeout_s)") from None
+
+    return call

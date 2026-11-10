@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from .faults import Fault
 
@@ -21,6 +21,30 @@ Category = Literal[
 ]
 
 StopReason = Literal["goal_met", "gave_up", "max_turns", "script_end", "error"]
+
+
+class ConfigError(ValueError):
+    """A target or scenario file the lab can't use; the message names the file and the problem."""
+
+
+def _first_error(exc: ValidationError) -> str:
+    err = exc.errors()[0]
+    where = ".".join(str(p) for p in err["loc"]) or "file"
+    return f"{where}: {err['msg']}" + (f" (and {exc.error_count() - 1} more)" if exc.error_count() > 1 else "")
+
+
+def _read_mapping(path: Path, kind: str) -> dict:
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise ConfigError(f"{path}: file not found") from exc
+    except yaml.YAMLError as exc:
+        mark = getattr(exc, "problem_mark", None)
+        at = f" at line {mark.line + 1}" if mark else ""
+        raise ConfigError(f"{path}: not valid YAML{at}") from exc
+    if not isinstance(data, dict):
+        raise ConfigError(f"{path}: a {kind} file must be a YAML mapping (key: value), got {type(data).__name__}")
+    return data
 
 
 class Target(BaseModel):
@@ -41,7 +65,7 @@ class Target(BaseModel):
     headers: dict[str, str] = Field(default_factory=dict)
     block_types: list[str] = Field(default_factory=lambda: ["guardrail_blocked"])
     max_retries: int = 4
-    timeout_s: float = 30.0
+    timeout_s: float = 120.0  # per agent call, every adapter: a hanging agent fails its scenario, not the run
     # Strings that must never appear in a reply (system prompt canaries, keys, PII).
     secrets: list[str] = Field(default_factory=list)
     # USD per million tokens by model, for cost estimates: {"gpt-4o-mini": {"input": 0.15, "output": 0.6}}
@@ -62,7 +86,10 @@ class Target(BaseModel):
 
     @classmethod
     def load(cls, path: str | Path) -> Target:
-        return cls.model_validate(yaml.safe_load(Path(path).read_text(encoding="utf-8")))
+        try:
+            return cls.model_validate(_read_mapping(Path(path), "target"))
+        except ValidationError as exc:
+            raise ConfigError(f"{path}: not a valid target: {_first_error(exc)}") from exc
 
 
 class Criteria(BaseModel):
@@ -106,7 +133,13 @@ class Scenario(BaseModel):
     def load_dir(cls, path: str | Path) -> list[Scenario]:
         root = Path(path)
         files = sorted(root.rglob("*.yaml")) if root.is_dir() else [root]
-        return [cls.model_validate(yaml.safe_load(f.read_text(encoding="utf-8"))) for f in files]
+        out = []
+        for f in files:
+            try:
+                out.append(cls.model_validate(_read_mapping(f, "scenario")))
+            except ValidationError as exc:
+                raise ConfigError(f"{f}: not a valid scenario: {_first_error(exc)}") from exc
+        return out
 
     def to_yaml(self) -> str:
         return yaml.safe_dump(self.model_dump(exclude_defaults=True), sort_keys=False, allow_unicode=True)

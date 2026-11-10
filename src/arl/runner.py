@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import random
 import time
 from dataclasses import dataclass, field
@@ -31,6 +32,18 @@ class RunConfig:
     user_llm: LLM | None = None  # enables simulated users for scenarios with a user_goal
     judge_llm: LLM | None = None  # enables rubric judges after deterministic checks pass
     secrets: list[str] = field(default_factory=list)
+
+
+def as_text(reply) -> str:
+    """Agents should return text; a wrong type is recorded as text rather than crashing the whole suite."""
+    if isinstance(reply, str):
+        # Lone surrogates can't be stored or exported as UTF-8; keep the rest of the reply.
+        return reply.encode("utf-8", "replace").decode("utf-8")
+    if reply is None:
+        return ""
+    if isinstance(reply, dict | list):
+        return json.dumps(reply, default=str, ensure_ascii=False)
+    return str(reply)
 
 
 async def run_one(
@@ -65,7 +78,7 @@ async def run_one(
                 transcript.append({"role": "user", "content": user_msg})
                 box.turn = turn
                 with trace.span("agent.turn", turn=turn) as span:
-                    reply = await agent(list(transcript))
+                    reply = as_text(await agent(list(transcript)))
                     span["attrs"]["reply_chars"] = len(reply)
                 transcript.append({"role": "assistant", "content": reply})
             else:
