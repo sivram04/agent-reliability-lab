@@ -89,7 +89,7 @@ def run(
     tgt = Target.load(target)
     load_prices(tgt.prices)
     try:
-        scenarios, skipped = suites.bind(suites.load(suite), tgt)
+        scenarios, skipped = suites.bind(suites.load(suite), tgt, judge=bool(judge_llm) or record_mode == "replay")
     except ValueError as exc:
         raise typer.BadParameter(str(exc), param_hint="--suite") from exc
     if skipped:

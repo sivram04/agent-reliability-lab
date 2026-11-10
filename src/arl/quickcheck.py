@@ -133,7 +133,7 @@ def run_check(root: Path = Path("."), target: Path | None = None, suite: str | N
                            state.get("pass_rate"))
     try:
         tgt = Target.load(target)
-        scenarios = suites.load(suite or default_suite(root), tgt)
+        scenarios = suites.bind(suites.load(suite or default_suite(root)), tgt, judge=False)[0]
         agent = build_agent(tgt)
         results = asyncio.run(run_suite(agent, scenarios, cfg=RunConfig(secrets=tgt.secrets)))
     except Exception as exc:  # setup problems are reported, never raised into a hook

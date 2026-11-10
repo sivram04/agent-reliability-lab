@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from .models import Scenario, Target
@@ -70,25 +71,46 @@ def _uses_tools(s: Scenario) -> bool:
     return bool(s.faults or c.expect_tools or c.forbid_tools or c.max_tool_calls is not None)
 
 
-def bind(scenarios: list[Scenario], target: Target) -> tuple[list[Scenario], list[tuple[str, str]]]:
-    """Resolve $retrieval, $actions and $probe_question from the target. Returns (runnable, skipped),
-    where skipped lists (scenario id, reason). A scenario is never run with an unresolved placeholder,
-    and tool-dependent scenarios are skipped for black-box agents, where they would pass vacuously."""
+TOOL_FIELDS = ("forbid_tools", "expect_tools")
+ROLE = re.compile(r"^\$(\w+)$")
+PROBE = re.compile(r"\$probe(?::(\w+)|_question)")
+
+
+def _roles_used(s: Scenario) -> set[str]:
+    names = [f.tool for f in s.faults] + list(s.criteria.expect_tools) + list(s.criteria.forbid_tools)
+    return {m.group(1) for n in names if (m := ROLE.match(n))}
+
+
+def _probes_used(s: Scenario) -> set[str]:
+    return {m.group(1) or "" for t in s.turns for m in PROBE.finditer(t)}
+
+
+def _probe(target: Target, role: str) -> str | None:
+    return target.probes.get(role) or target.probe_question if role else target.probe_question
+
+
+def bind(scenarios: list[Scenario], target: Target,
+         judge: bool = True) -> tuple[list[Scenario], list[tuple[str, str]]]:
+    """Resolve tool-role placeholders from the target and drop scenarios that can't apply.
+
+    `$role` (e.g. $retrieval, $actions, $memory, $code, $browser, $delegate, $document) names the target's
+    `tools[role]`: the first tool in faults and expect_tools, every tool in forbid_tools. In turns,
+    `$probe_question` and `$probe:role` become `probe_question` / `probes[role]`. Returns (runnable,
+    skipped) with a reason per skipped scenario: missing roles, tools the target doesn't declare, or
+    tool-dependent scenarios on black-box agents, where they would pass vacuously. With judge=False,
+    judge-only scenarios are skipped too: without a judge they would pass without testing anything."""
     roles = target.tools
+    declared = {t for names in roles.values() for t in names}
     kept, skipped = [], []
     for s in scenarios:
-        text = s.model_dump_json()
-        missing = []
-        if "$retrieval" in text and not roles.get("retrieval"):
-            missing.append("tools.retrieval")
-        if "$actions" in text and not roles.get("actions"):
-            missing.append("tools.actions")
-        if "$probe_question" in text and not target.probe_question:
-            missing.append("probe_question")
+        if s.criteria.judge_only and not judge:
+            skipped.append((s.id, "only an LLM judge can grade it; add --judge-llm"))
+            continue
+        missing = [f"tools.{r}" for r in sorted(_roles_used(s)) if not roles.get(r)]
+        missing += sorted({f"probes.{r}" if r else "probe_question" for r in _probes_used(s) if not _probe(target, r)})
         if missing:
             skipped.append((s.id, f"set {', '.join(missing)} in the target"))
             continue
-        declared = {t for names in roles.values() for t in names}
         named = {f.tool for f in s.faults} | set(s.criteria.expect_tools) | set(s.criteria.forbid_tools)
         undeclared = sorted(t for t in named if t != "*" and not t.startswith("$") and t not in declared)
         if undeclared:
@@ -98,18 +120,19 @@ def bind(scenarios: list[Scenario], target: Target) -> tuple[list[Scenario], lis
         if _uses_tools(s) and target.adapter not in IN_PROCESS:
             skipped.append((s.id, f"needs tool visibility; the {target.adapter} adapter is a black box"))
             continue
-        if "$" not in text:
+        if not _roles_used(s) and not _probes_used(s):
             kept.append(s)
             continue
         data = s.model_dump()
-        data["turns"] = [t.replace("$probe_question", target.probe_question or "") for t in data["turns"]]
+        data["turns"] = [PROBE.sub(lambda m: _probe(target, m.group(1) or "") or "", t) for t in data["turns"]]
         for f in data["faults"]:
-            if f["tool"] == "$retrieval":
-                f["tool"] = roles["retrieval"][0]
-        for key in ("forbid_tools", "expect_tools"):
-            names = data["criteria"][key]
-            data["criteria"][key] = [t for n in names for t in
-                                     (roles.get("actions", []) if n == "$actions" else
-                                      roles.get("retrieval", [])[:1] if n == "$retrieval" else [n])]
+            if m := ROLE.match(f["tool"]):
+                f["tool"] = roles[m.group(1)][0]
+        for key in TOOL_FIELDS:
+            out = []
+            for n in data["criteria"][key]:
+                m = ROLE.match(n)
+                out += (roles[m.group(1)] if key == "forbid_tools" else roles[m.group(1)][:1]) if m else [n]
+            data["criteria"][key] = out
         kept.append(Scenario.model_validate(data))
     return kept, skipped

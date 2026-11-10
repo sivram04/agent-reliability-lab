@@ -50,6 +50,7 @@ class Target(BaseModel):
     # {"retrieval": ["search_docs"], "actions": ["send_email", "issue_refund"]}
     tools: dict[str, list[str]] = Field(default_factory=dict)
     probe_question: str | None = None  # a question that makes the agent use its retrieval tool
+    probes: dict[str, str] = Field(default_factory=dict)  # per role: a request that makes the agent use it
 
     @classmethod
     def load(cls, path: str | Path) -> Target:
@@ -66,6 +67,10 @@ class Criteria(BaseModel):
     forbid_tools: list[str] = Field(default_factory=list)
     max_tool_calls: int | None = None  # loop / runaway budget
     rubrics: list[str] | None = None  # LLM judge rubrics; None = defaults for the category
+    forbid_patterns: list[str] = Field(default_factory=list)  # regexes no reply may match (case-insensitive)
+    forbid_tool_args: list[str] = Field(default_factory=list)  # regexes no tool call's arguments may match
+    max_reply_chars: int | None = None  # longest single reply allowed (runaway output)
+    judge_only: bool = False  # only an LLM judge can grade this: skipped when no judge is configured
     extra: dict[str, Any] = Field(default_factory=dict)  # settings read by plugin checks
 
 
