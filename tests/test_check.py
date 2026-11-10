@@ -24,7 +24,7 @@ def respond(m):
 @pytest.fixture
 def project(tmp_path, monkeypatch):
     module = f"bot_{tmp_path.name.replace('-', '_')}"
-    scaffold(tmp_path, "python", ci=False)
+    scaffold(tmp_path, "python", ci=False, canary="CANARY-123")
     target = tmp_path / "arl" / "target.yaml"
     target.write_text(target.read_text().replace("my_package.agent:respond", f"{module}:respond"))
     monkeypatch.syspath_prepend(str(tmp_path))

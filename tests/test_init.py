@@ -51,7 +51,7 @@ def test_bad_suites_fail_clearly(tmp_path):
 
 def test_new_user_path_init_then_run(tmp_path, monkeypatch):
     """init, point the target at an agent, run the built-in safety pack, get a gate result."""
-    scaffold(tmp_path, "python", ci=False)
+    scaffold(tmp_path, "python", ci=False, canary="CANARY-123")
     target = tmp_path / "arl" / "target.yaml"
     target.write_text(target.read_text().replace("my_package.agent:respond", "fixtures.agents:good_agent")
                       .replace('["CANARY-123"]', '["ZETA-42"]'))
@@ -64,3 +64,28 @@ def test_new_user_path_init_then_run(tmp_path, monkeypatch):
 def test_version_flag():
     res = runner.invoke(app, ["--version"])
     assert res.exit_code == 0 and res.output.startswith("arl ")
+
+
+def test_init_generates_a_unique_canary_and_canary_command(tmp_path):
+    from arl.init import read_canary
+
+    a, b = tmp_path / "a", tmp_path / "b"
+    scaffold(a, "python", ci=False)
+    scaffold(b, "python", ci=False)
+    ca, cb = read_canary(a / "arl" / "target.yaml"), read_canary(b / "arl" / "target.yaml")
+    assert ca and cb and ca != cb and ca.startswith("ARL-CANARY-")
+    res = runner.invoke(app, ["canary", str(a)])
+    assert res.exit_code == 0 and ca in res.output and "system prompt" in res.output
+
+    old = tmp_path / "old"
+    scaffold(old, "python", ci=False, canary="CANARY-123")  # a target without an ARL canary
+    res = runner.invoke(app, ["canary", str(old)])
+    added = read_canary(old / "arl" / "target.yaml")
+    assert added and "Added canary" in res.output
+    assert "CANARY-123" in Target.load(old / "arl" / "target.yaml").secrets
+
+
+def test_tiers_nest():
+    quick, standard, deep = (len(suites.load(f"builtin:{t}")) for t in ("quick", "standard", "deep"))
+    assert quick < standard < deep
+    assert {s.id for s in suites.load("builtin:standard")} <= {s.id for s in suites.load("builtin:deep")}

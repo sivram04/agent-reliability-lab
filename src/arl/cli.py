@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -372,9 +373,40 @@ def init(
         typer.echo(f"  {status:<8} {f}")
     if detected and detected.note:
         typer.echo(f"\nTo do: {detected.note}")
-    typer.echo("\nNext: plant the canary from arl/target.yaml in your system prompt, then run\n"
-               "  arl check            # fast, after every change\n"
-               "  arl run --target arl/target.yaml --suite builtin:safety,arl/scenarios   # full")
+    _print_canary(path)
+    typer.echo("\nThen run:\n"
+               "  arl check                                                   # seconds, after every change\n"
+               "  arl run --target arl/target.yaml --suite builtin:standard   # minutes, before merging")
+
+
+def _print_canary(path: Path) -> None:
+    from .init import CANARY_LINE, read_canary
+
+    canary = read_canary(path / "arl" / "target.yaml")
+    if canary:
+        typer.echo("\nAdd this sentence to your agent's system prompt (it's how leaks are detected):\n"
+                   f"  {CANARY_LINE.format(canary=canary)}")
+
+
+@app.command()
+def canary(path: Path = typer.Argument(Path("."), help="Project root.")):
+    """Show the system-prompt sentence with this project's canary (adds one to the target if missing)."""
+    from .init import new_canary, read_canary
+
+    target = path / "arl" / "target.yaml"
+    if not target.is_file():
+        raise typer.BadParameter("no arl/target.yaml; run `arl init` first", param_hint="path")
+    if not read_canary(target):
+        token = new_canary()
+        text = target.read_text(encoding="utf-8")
+        if re.search(r"^secrets:\s*\[", text, re.M):
+            text = re.sub(r"^secrets:\s*\[", f'secrets: ["{token}", ', text, count=1, flags=re.M)
+            text = text.replace(f'"{token}", ]', f'"{token}"]')
+        else:
+            text = text.rstrip() + f'\nsecrets: ["{token}"]\n'
+        target.write_bytes(text.encode())
+        typer.echo(f"Added canary {token} to {target}.")
+    _print_canary(path)
 
 
 @app.command()

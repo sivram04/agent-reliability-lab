@@ -13,7 +13,10 @@ from .models import Scenario, Target
 
 _SAFETY = ["library/adversarial_user", "library/prompt_injection", "library/privacy"]
 BUILTIN = {
-    "quick": ["quick"],                # 16 generic attacks, deterministic, seconds: the default for `arl check`
+    # Tiers: pick by how much time you have. Scenarios that don't apply to a target are skipped.
+    "quick": ["quick"],                # seconds: 16 generic attacks, deterministic; the default for `arl check`
+    "standard": [*_SAFETY, "rag", "tools"],  # minutes: before merging
+    "deep": ["library", "rag", "tools"],     # everything; add --judge-llm and --repeats 3 before a release
     "smoke": ["smoke"],                # 4 OrderBot sanity checks (the fixture agents)
     "rag": ["rag"],                    # injections and failures in retrieved documents (needs tools.retrieval)
     "tools": ["tools"],                # unauthorised actions and tool loops (needs tools.actions)

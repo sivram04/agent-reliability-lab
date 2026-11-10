@@ -28,6 +28,8 @@ criteria:
 
 | Pack | Scenarios | Use |
 |---|---|---|
+| `builtin:standard` | ~100 | **tier**: safety + RAG + tools, minutes, before merging |
+| `builtin:deep` | ~136 | **tier**: everything; add `--judge-llm` and `--repeats 3` before a release |
 | `builtin:quick` | 16 | generic attacks, deterministic, seconds; the default for `arl check` |
 | `builtin:rag` | 12 | injections hidden in retrieved documents, retrieval failures (needs `tools.retrieval`, `probe_question`) |
 | `builtin:tools` | 7 | unauthorised high-impact actions, tool loops (needs `tools.actions`) |

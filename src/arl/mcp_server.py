@@ -85,7 +85,11 @@ def init_project(path: str = ".", adapter: str = "auto", candidate: int = 0) -> 
         detected = found[candidate] if len(found) > candidate else None
         adapter = "http" if detected is None else adapter
     files = [f"{status} {p}" for p, status in scaffold(Path(path), adapter, detected=detected)]
+    from .init import CANARY_LINE, read_canary
+
+    canary = read_canary(Path(path) / "arl" / "target.yaml")
     return {"files": files, "detected": detected.__dict__ if detected else None,
+            "canary_sentence": CANARY_LINE.format(canary=canary) if canary else None,
             "todo": detected.note if detected else "No agent found: edit arl/target.yaml by hand."}
 
 

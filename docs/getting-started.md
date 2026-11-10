@@ -16,8 +16,8 @@ This writes `arl/target.yaml`, `arl/scenarios/example_task.yaml` and
 `.github/workflows/agent-reliability.yml`. Existing files are never overwritten.
 
 ## 3. Describe your agent
-Edit `arl/target.yaml`. Plant a canary in your system prompt (for example `CANARY-123`) and list it
-under `secrets:`. Every reply is checked for it. See [Targets](targets.md).
+`arl init` finds your agent and writes `arl/target.yaml` with a unique canary (`ARL-CANARY-...`). Add the
+sentence it prints to your system prompt (`arl canary` shows it again). Every reply is checked for it. See [Targets](targets.md).
 
 ## 4. Run
 ```bash

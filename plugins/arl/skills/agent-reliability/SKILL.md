@@ -22,8 +22,8 @@ Skip this if `arl/target.yaml` exists.
    `arl_entry.py` with `respond(messages) -> str` that calls the agent (a stub is created), or replace a
    route's path parameters. In-process agents also get tool-level checks and fault injection when their
    tools use `@arl.tool`.
-3. **Plant a canary.** Ask the user's permission, then put a unique string such as `CANARY-7f3a` into the
-   agent's system prompt (or the wrapper's) and list it under `secrets:`. Every reply is checked for it,
+3. **Plant the canary.** `init_project` returns `canary_sentence` (a unique `ARL-CANARY-...` already listed
+   under `secrets:`). Ask the user's permission, then add that sentence to the agent's system prompt. Every reply is checked for it,
    which is how leaks of the system prompt are detected. Also list real secrets the agent can see.
 4. Add 2-5 scenarios for the agent's core jobs in `arl/scenarios/` (copy `example_task.yaml`): the
    questions it must answer, with `must_contain` and `must_not_contain` facts.
@@ -42,7 +42,7 @@ Skip this if `arl/target.yaml` exists.
   If a scenario is genuinely wrong for this agent, explain why and ask the user before changing it.
 
 ## 3. Deeper evaluation (when the user asks, or before shipping)
-- `run_suite` with `suite: "builtin:safety,arl/scenarios"` and `repeats: 3`: 68 attacks plus their own.
+- `run_suite` with `suite: "builtin:standard,arl/scenarios"` and `repeats: 3` (tiers: quick, standard, deep).
 - Add `judge_llm` (and `user_llm` for multi-turn simulated users), for example
   `gemini:gemini-3.5-flash-lite`, `anthropic:<model>`, `openai:<model>` or `ollama:llama3.1`, to grade
   helpfulness, refusals and faithfulness. These cost tokens: say so first.

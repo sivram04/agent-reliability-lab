@@ -18,8 +18,17 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - `builtin:rag` (12) and `builtin:tools` (7) packs, bound to the target's `tools` roles and `probe_question`;
   scenarios that can't apply are skipped with a reason instead of passing vacuously.
 
+- Flakiness: per-scenario outcomes across repeats (always pass / always fail / flaky); `arl check` re-runs new
+  failures and only blocks on ones that fail every time.
+- Plain-English findings (`arl.explain`): failures grouped by problem and attack technique, with an example and
+  a fix, in `arl run`, `arl check`, the hook and MCP. `arl run --verbose` lists every failing run.
+- False-alarm guard: careful reference agents must pass every generic scenario (CI test).
+- Tiers `builtin:quick`, `builtin:standard`, `builtin:deep`; unique per-project canaries from `arl init`; `arl canary`.
+
 ### Fixed
 - Smoke attack scenarios now use the target's `secrets:` instead of only the fixture's code.
+- Scenarios tied to tools a target doesn't declare are skipped instead of failing; one safety scenario no longer
+  requires an order-bot fact.
 
 ## 0.2.0
 
