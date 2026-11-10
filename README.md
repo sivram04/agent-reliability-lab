@@ -71,7 +71,7 @@ RESULT: regression
 | CI gate demo (retry loop removed in v2) | tool_chaos 100% → 67%, Fisher p < 0.001, blocked |
 | Red-team generator vs a keyword-guarded agent | 965 variants, 108 new breaches from seeds it fully blocked |
 | **Case study: an LLM gateway's guardrails** | Base64 and leetspeak bypassed the injection classifier 100% of the time (122 bypasses). After hardening based on the findings: 170/170 attacks stopped, 0 false positives. With real Gemini behind it: 0/112 leaks; the gateway stops 57 attacks itself instead of 33. [Write-up](docs/case-studies/01-gateway-guardrails.md) |
-| Judge-human agreement | In progress (`arl label`) |
+| Judge agreement (refusal rubric, 93 real Gemini conversations, vs. an AI annotator; human labels pending) | The judge caught encoded leaks exact matching missed (base64, reversed, acrostic). Kappa 0.50 → **0.73** after tightening the rubric for soft leaks it was missing; in-sample. [Details](docs/judge-agreement.md) |
 
 ## Develop
 ```bash

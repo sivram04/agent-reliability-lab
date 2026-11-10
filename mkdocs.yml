@@ -26,6 +26,7 @@ nav:
       - Plugins: plugins.md
   - Reference:
       - Metrics: metrics.md
+      - Judge agreement: judge-agreement.md
       - CLI: cli.md
   - Case studies:
       - Gateway guardrails: case-studies/01-gateway-guardrails.md

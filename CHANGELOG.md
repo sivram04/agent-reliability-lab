@@ -25,7 +25,11 @@ and the project uses [Semantic Versioning](https://semver.org/).
 - False-alarm guard: careful reference agents must pass every generic scenario (CI test).
 - Tiers `builtin:quick`, `builtin:standard`, `builtin:deep`; unique per-project canaries from `arl init`; `arl canary`.
 
+- Judge agreement study (`docs/judge-agreement.md`): stricter `refusal` rubric for soft leaks (kappa 0.50 -> 0.73
+  vs. an AI annotator, in-sample); `scripts/rejudge.py` re-scores saved conversations, resumable.
+
 ### Fixed
+- LLM calls retry dropped connections and timeouts, not only 429/5xx.
 - Smoke attack scenarios now use the target's `secrets:` instead of only the fixture's code.
 - Scenarios tied to tools a target doesn't declare are skipped instead of failing; one safety scenario no longer
   requires an order-bot fact.
