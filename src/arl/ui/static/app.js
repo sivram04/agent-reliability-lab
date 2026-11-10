@@ -15,7 +15,8 @@
   // Agent replies as evidence: escaped, markdown emphasis dropped, and every leaked string marked.
   function evidence(text, leaks) {
     let html = esc(text).replace(/\*\*(.+?)\*\*/g, "$1").replace(/__(.+?)__/g, "$1");
-    for (const leak of (leaks || []).filter(Boolean).sort((a, b) => b.length - a.length)) {
+    // Stored results replace secrets with [REDACTED]; mark that wherever it appears, plus any other leaked text.
+    for (const leak of ["[REDACTED]", ...(leaks || [])].filter(Boolean).sort((a, b) => b.length - a.length)) {
       const needle = esc(leak).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       html = html.replace(new RegExp(needle, "gi"), (m) => `<mark class="leak" title="Leaked">${m}</mark>`);
     }
