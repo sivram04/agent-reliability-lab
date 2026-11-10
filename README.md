@@ -5,6 +5,7 @@
 **[Live demo dashboard](https://sivram04.github.io/agent-reliability-lab/demo/)** (real runs from the case studies) · **[Docs](https://sivram04.github.io/agent-reliability-lab/)** · **[User guide](docs/USER_GUIDE.md)**
 
 [![ci](https://github.com/sivram04/agent-reliability-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/sivram04/agent-reliability-lab/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/agent-reliability-lab.svg)](https://pypi.org/project/agent-reliability-lab/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 
@@ -190,7 +191,7 @@ were found, fixed and re-verified. Each one now has a regression test (`tests/te
 
 **Claude Code plugin.** Install the lab where your agent's packages live, then add the plugin:
 ```bash
-pip install "agent-reliability-lab[mcp] @ git+https://github.com/sivram04/agent-reliability-lab"
+pip install "agent-reliability-lab[mcp]"
 ```
 ```
 /plugin marketplace add sivram04/agent-reliability-lab
@@ -237,7 +238,7 @@ Gate your own agent's pull requests:
 ## 10. Run it locally
 
 ```bash
-pip install "agent-reliability-lab @ git+https://github.com/sivram04/agent-reliability-lab"
+pip install "agent-reliability-lab"
 cd your-agent-project
 arl init        # finds your agent, writes arl/target.yaml with a unique canary
 arl check       # 16 attacks in seconds

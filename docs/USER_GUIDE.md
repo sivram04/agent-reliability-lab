@@ -23,7 +23,7 @@ requests and letting Claude fix what breaks.
 Python 3.11 or newer. Install into the **same environment your agent runs in**, so the lab can import it.
 
 ```bash
-pip install "agent-reliability-lab[mcp] @ git+https://github.com/sivram04/agent-reliability-lab"
+pip install "agent-reliability-lab[mcp]"
 arl --version
 ```
 
