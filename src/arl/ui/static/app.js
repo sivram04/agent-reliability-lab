@@ -12,6 +12,18 @@
     const d = new Date(iso);
     return isNaN(d) ? esc(iso) : d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   };
+  // Agent replies as evidence: escaped, markdown emphasis dropped, and every leaked string marked.
+  function evidence(text, leaks) {
+    let html = esc(text).replace(/\*\*(.+?)\*\*/g, "$1").replace(/__(.+?)__/g, "$1");
+    for (const leak of (leaks || []).filter(Boolean).sort((a, b) => b.length - a.length)) {
+      const needle = esc(leak).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      html = html.replace(new RegExp(needle, "gi"), (m) => `<mark class="leak" title="Leaked">${m}</mark>`);
+    }
+    return html;
+  }
+  const leaksFromChecks = (checks) => checks.filter((c) => !c.passed).flatMap((c) =>
+    c.name === "no_secret_leak" ? c.detail.split(",").map((x) => x.trim()) :
+      c.name.startsWith("forbidden:") ? [c.name.slice(10)] : []);
   const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
   const label = (s) => esc(String(s).replace(/_/g, " "));
 
@@ -113,10 +125,11 @@
   function interval(rate, ci) {
     if (rate == null) return "";
     const [lo, hi] = ci || [rate, rate];
-    return `<div class="interval" role="img" aria-label="95% interval ${pct(lo)} to ${pct(hi)}">
+    return `<div class="interval${rate < 0.9 ? " low" : ""}" role="img" aria-label="95% interval ${pct(lo)} to ${pct(hi)}">
+      <span class="scale" style="left:50%"></span>
       <span class="ci" style="left:${lo * 100}%;width:${Math.max(0.5, (hi - lo) * 100)}%"></span>
-      <span class="pt" style="left:calc(${rate * 100}% - 1px)"></span>
-      <span class="tick" style="left:0">0</span><span class="tick" style="left:100%">100%</span></div>`;
+      <span class="pt" style="left:calc(${rate * 100}% - 1.5px)"></span>
+      <span class="tick" style="left:0">0</span><span class="tick" style="left:50%">50%</span><span class="tick" style="left:100%">100%</span></div>`;
   }
 
   function causeHtml(f, i, run) {
@@ -129,7 +142,7 @@
       <h3>${esc(f.title)}</h3><p class="why">${esc(f.why)}</p>
       ${f.example_user ? `<div class="evidence" aria-label="Evidence">
         <div class="line"><span class="speaker">Attack</span><div class="utter">${esc(f.example_user)}</div></div>
-        <div class="line"><span class="speaker agent">Reply</span><div class="utter">${esc(f.example_reply || "(no reply)")}</div></div></div>` : ""}
+        <div class="line"><span class="speaker agent">Reply</span><div class="utter">${f.example_reply ? evidence(f.example_reply, f.leaked) : "(no reply)"}</div></div></div>` : ""}
       <div class="reco"><span class="speaker">Fix</span><p>${esc(f.fix)}</p></div>
       <div class="affected" aria-label="Affected scenarios">${scen.join("")}</div></div></article>`;
   }
@@ -143,7 +156,7 @@
     const risk = (kind) => Object.entries(names[kind]).map(([k, name]) => {
       const n = cov[kind].covered[k];
       const oos = names.out_of_scope[k];
-      const mark = oos ? stamp("na", "n/a") : n ? `<span class="num">${n}</span>` : stamp("skip", "untested");
+      const mark = oos ? stamp("na", "n/a") : n ? `<span class="num">${n}</span>` : stamp("untested", "untested");
       return `<div class="risk"><code>${esc(k)}</code><span>${esc(name)}</span>${mark}</div>`;
     }).join("");
     const count = (kind) => `${Object.keys(cov[kind].covered).length} of ${Object.keys(names[kind]).filter((k) => !names.out_of_scope[k]).length}`;
@@ -232,6 +245,7 @@
     const turns = (r.spans || []).filter((s) => s.name === "agent.turn").sort((a, b) => a.start - b.start);
     const t0 = (r.spans || []).reduce((m, s) => Math.min(m, s.start ?? Infinity), Infinity);
     const maxDur = Math.max(0.001, ...turns.map((s) => s.duration_s || 0));
+    const leaks = leaksFromChecks(r.checks);
     const events = [];
     let agentTurn = 0;
     r.transcript.forEach((m) => {
@@ -264,7 +278,7 @@
       return `<div class="event ${e.kind}${e.kind === "agent" && !r.passed ? " bad" : ""}">
         <span class="t">${at(e.span)}${e.span ? `<br>${dur.toFixed(2)} s` : ""}${bar}</span>
         <span class="speaker ${e.kind === "agent" ? "agent" : ""}">${e.kind === "agent" ? "Agent" : "User"}</span>
-        <div class="utter">${esc(e.text || "(empty)")}</div></div>`;
+        <div class="utter">${e.kind === "agent" ? evidence(e.text || "(empty)", leaks) : esc(e.text || "(empty)")}</div></div>`;
     }).join("");
     const checks = r.checks.map((c) => `<div class="check">${c.passed ? stamp("pass", "pass") : stamp("fail", "fail")}
       <div><div class="utter">${esc(c.name)}</div>${c.detail ? `<div class="detail">${esc(c.detail)}</div>` : ""}</div></div>`).join("");

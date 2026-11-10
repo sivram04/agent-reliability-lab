@@ -44,8 +44,8 @@ body { margin: 0; min-height: 100vh; }
 a { color: inherit; text-decoration-color: var(--rule); text-underline-offset: 3px; text-decoration-thickness: 1px; }
 a:hover { text-decoration-color: var(--orange); }
 :focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
-.skip { position: absolute; left: -999px; }
-.skip:focus { left: var(--gutter); top: 8px; background: var(--paper); padding: 4px 8px; z-index: 2; }
+.skip-link { position: absolute; left: -999px; }
+.skip-link:focus { left: var(--gutter); top: 8px; background: var(--paper); padding: 4px 8px; z-index: 2; }
 h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
 h2 { font-size: 1.35rem; margin: 3rem 0 0.9rem; padding-bottom: 0.45rem; border-bottom: 1px solid var(--rule-strong); }
 p { margin: 0 0 0.6rem; max-width: 72ch; }
@@ -78,7 +78,7 @@ main:focus, main:focus-visible { outline: none; }
   padding: 4px 6px 3px; border: 1.5px solid currentColor; white-space: nowrap; vertical-align: middle; }
 .stamp.fail { color: var(--orange-text); transform: rotate(-2deg); }
 .stamp.pass { color: var(--pass); }
-.stamp.skip, .stamp.na { color: var(--ink-3); border-style: dashed; }
+.stamp.untested, .stamp.na { color: var(--ink-3); border-style: dashed; }
 .stamp.flaky { color: var(--amber); transform: rotate(1.5deg); }
 .stamp.high { color: var(--paper); background: var(--orange-text); border-color: var(--orange-text); }
 .stamp.medium { color: var(--orange-text); }
@@ -100,10 +100,16 @@ main:focus, main:focus-visible { outline: none; }
 .verdict-sub { margin-top: 0.8rem; color: var(--ink-2); font-size: 1.05rem; }
 .rate { text-align: right; }
 .rate-big { font: 700 clamp(2rem, 4vw, 3rem)/1 var(--display); font-variant-numeric: tabular-nums; }
-.rate-ci { font: 12px var(--mono); color: var(--ink-3); margin-top: 0.3rem; }
-.interval { position: relative; height: 18px; width: 220px; margin: 0.6rem 0 0 auto; border-bottom: 1px solid var(--rule); }
-.interval .ci { position: absolute; top: 7px; height: 4px; background: var(--ink-2); }
-.interval .pt { position: absolute; top: 2px; width: 2px; height: 14px; background: var(--ink); }
+.rate-ci { font-size: 0.85rem; color: var(--ink-2); margin-top: 0.3rem; font-variant-numeric: tabular-nums; }
+.interval { position: relative; height: 26px; width: min(340px, 100%); margin: 0.8rem 0 1.2rem auto;
+  border-bottom: 1px solid var(--rule-strong); }
+.interval .scale { position: absolute; bottom: 0; width: 1px; height: 6px; background: var(--rule-strong); }
+.interval .ci { position: absolute; top: 11px; height: 0; border-top: 2px solid var(--ink-2);
+  border-left: 1px solid var(--ink-2); border-right: 1px solid var(--ink-2); }
+.interval .ci::before, .interval .ci::after { content: ""; position: absolute; top: -7px; width: 1px; height: 12px; background: var(--ink-2); }
+.interval .ci::before { left: -1px; } .interval .ci::after { right: -1px; }
+.interval .pt { position: absolute; top: 3px; width: 3px; height: 17px; background: var(--pass); }
+.interval.low .pt { background: var(--orange); }
 .interval .tick { position: absolute; bottom: -14px; font: 10px var(--mono); color: var(--ink-3); transform: translateX(-50%); }
 .marks { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 1rem; }
 
@@ -133,8 +139,9 @@ td.r, th.r { text-align: right; }
 tr.link { cursor: pointer; }
 tr.link:hover td { background: var(--paper-2); }
 .bar { position: relative; height: 10px; min-width: 120px; background: var(--paper-2); border: 1px solid var(--rule); }
-.bar i { position: absolute; inset: 0 auto 0 0; background: var(--ink-2); }
-.bar.low i { background: var(--orange); }
+/* The passed share is green; on a weak category the missing share shows in orange. */
+.bar i { position: absolute; inset: 0 auto 0 0; background: var(--pass); }
+.bar.low { background: var(--orange-wash); border-color: var(--orange); }
 .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 3rem; }
 
 /* Coverage grid */
@@ -172,12 +179,14 @@ tr.link:hover td { background: var(--paper-2); }
 .trend text { font: 10px var(--mono); fill: var(--ink-3); }
 
 /* Recorder transcript */
-.recorder { margin-top: 1.4rem; border-left: 1px solid var(--rule-strong); }
+.recorder { margin-top: 1.4rem; border-left: 2px solid var(--rule-strong); }
 .event { display: grid; grid-template-columns: 6.5rem 6rem minmax(0, 1fr); gap: 0 1rem; position: relative;
   padding: 0.7rem 0 0.7rem 1.2rem; border-bottom: 1px solid var(--rule); }
 .event::before { content: ""; position: absolute; left: -4px; top: 1.05rem; width: 7px; height: 7px; background: var(--ink); }
-.event.fault::before, .event.bad::before { background: var(--orange); }
-.event .t { font: 12px var(--mono); color: var(--ink-3); }
+.event.fault::before, .event.bad::before { background: var(--orange); width: 11px; height: 11px; left: -7px; top: 0.9rem; }
+mark.leak { background: var(--orange-wash); color: var(--orange-text); font-weight: 700; padding: 0 2px;
+  border-bottom: 2px solid var(--orange); }
+.event .t { font: 12px var(--mono); color: var(--ink-2); }
 .event .dur { display: block; margin-top: 0.3rem; width: 2px; background: var(--rule-strong); }
 .event.tool .utter { color: var(--ink-2); font-size: 12.5px; }
 .checks { margin-top: 1.6rem; }
@@ -200,7 +209,9 @@ select { font: 14px var(--text); color: var(--ink); background: var(--paper); bo
   .event { grid-template-columns: 5rem minmax(0, 1fr); }
   .event .t { grid-row: span 2; }
   .masthead { gap: 0.8rem 1rem; flex-wrap: wrap; }
-  .theme { margin-left: auto; }
+  .mark { flex: 1; }
+  .theme { order: 2; }
+  .masthead nav { order: 3; width: 100%; padding-top: 0.35rem; border-top: 1px solid var(--rule); }
   .source { display: none; }
   .hide-sm { display: none; }
 }
@@ -211,9 +222,7 @@ select { font: 14px var(--text); color: var(--ink); background: var(--paper); bo
   .cov-caps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .verdict-line, .rate-big { animation: settle 520ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .stamp.fail, .stamp.flaky { animation: stamp 380ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-  @keyframes settle { from { opacity: 0.001; transform: translateY(6px); filter: blur(3px); } }
   @keyframes stamp { from { opacity: 0; transform: scale(1.35) rotate(-6deg); } }
 }
 @media print {

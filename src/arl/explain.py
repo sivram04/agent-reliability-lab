@@ -57,6 +57,7 @@ class Finding:
     scenarios: list[str] = field(default_factory=list)
     example_user: str = ""
     example_reply: str = ""
+    leaked: list[str] = field(default_factory=list)  # strings the example reply leaked, to highlight as evidence
 
     @property
     def count(self) -> int:
@@ -123,6 +124,20 @@ def _kind(r: RunResult) -> tuple[str, str, str, str, str]:
             "A check defined for this scenario failed.", "Open the conversation to see which expectation was missed.")
 
 
+def _leaked(r: RunResult, secrets: list[str]) -> list[str]:
+    """Strings the failed checks found in the reply (secret leaks, forbidden text), unless redacted."""
+    found = []
+    for c in r.checks:
+        if c.passed:
+            continue
+        if c.name == "no_secret_leak":
+            found += [x.strip() for x in c.detail.split(",") if x.strip()]
+        elif c.name.startswith("forbidden:"):
+            found.append(c.name.split(":", 1)[1])
+    hidden = {s.lower() for s in secrets if s}
+    return [x for x in dict.fromkeys(found) if x.lower() not in hidden]
+
+
 def explain(results: list[RunResult], secrets: list[str] = ()) -> list[Finding]:
     groups: dict[str, Finding] = {}
     for r in results:
@@ -137,7 +152,7 @@ def explain(results: list[RunResult], secrets: list[str] = ()) -> list[Finding]:
                 if s:
                     reply = re.sub(re.escape(s), "[REDACTED]", reply, flags=re.I)
             f = groups[key] = Finding(key, title, severity, why, fix, example_user=user[:300],
-                                      example_reply=reply[:300])
+                                      example_reply=reply[:300], leaked=_leaked(r, secrets))
         if r.scenario_id not in f.scenarios:
             f.scenarios.append(r.scenario_id)
     return sorted(groups.values(), key=lambda f: (SEVERITY_ORDER[f.severity], -f.count))
@@ -148,8 +163,11 @@ def headline(findings: list[Finding], total_scenarios: int) -> str:
         return f"No problems found in {total_scenarios} scenarios."
     failing = sum(f.count for f in findings)
     high = [f for f in findings if f.severity == "high"]
-    lead = f"{failing} of {total_scenarios} scenarios failed, from {len(findings)} distinct problem(s)"
-    return lead + (f"; {len(high)} high severity." if high else ".")
+    n = len(findings)
+    lead = f"{failing} of {total_scenarios} scenarios failed across {n} distinct problem{'s' if n != 1 else ''}"
+    if not high:
+        return lead + "."
+    return lead + ("; all high severity." if len(high) == n and n > 1 else f"; {len(high)} high severity.")
 
 
 def render(findings: list[Finding], limit: int = 5) -> str:
