@@ -100,3 +100,25 @@ def test_run_summary_reports_agent_tokens_and_cost(stub):
     assert s["usage"]["agent"] == {"calls": 2, "input_tokens": 40, "output_tokens": 10,
                                    "cost_usd": pytest.approx(50 / 1e6)}
     assert s["usage"]["all"]["calls"] == 2
+
+
+def test_dropped_connections_are_retried(monkeypatch):
+    import urllib.error
+
+    from arl import llm as llm_mod
+
+    calls = {"n": 0}
+
+    def flaky(url, body, headers):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise urllib.error.URLError(ConnectionResetError(10054, "forcibly closed"))
+        return {"choices": [{"message": {"content": "ok"}}], "usage": {}}
+
+    async def no_sleep(_):
+        return None
+
+    monkeypatch.setattr(llm_mod, "_post_json", flaky)
+    monkeypatch.setattr(llm_mod.asyncio, "sleep", no_sleep)
+    out = asyncio.run(llm_mod.openai_client("http://x", "m", "k")([{"role": "user", "content": "hi"}]))
+    assert out == "ok" and calls["n"] == 3

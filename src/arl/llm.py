@@ -96,6 +96,11 @@ def _client(post: Post, model: str, role: str, max_retries: int) -> LLM:
                         raise
                     # Per-minute free-tier limits reset within a minute: back off up to 60 s.
                     await asyncio.sleep(min(60, 2 ** (attempt + 1)) + random.random())
+                except (urllib.error.URLError, ConnectionError, TimeoutError):
+                    # Dropped connections and timeouts are transient on long runs; retry them too.
+                    if attempt == max_retries - 1:
+                        raise
+                    await asyncio.sleep(min(30, 2 ** attempt) + random.random())
         raise RuntimeError("unreachable")
 
     return call
