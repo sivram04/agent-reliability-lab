@@ -85,6 +85,13 @@ def bind(scenarios: list[Scenario], target: Target) -> tuple[list[Scenario], lis
         if missing:
             skipped.append((s.id, f"set {', '.join(missing)} in the target"))
             continue
+        declared = {t for names in roles.values() for t in names}
+        named = {f.tool for f in s.faults} | set(s.criteria.expect_tools) | set(s.criteria.forbid_tools)
+        undeclared = sorted(t for t in named if t != "*" and not t.startswith("$") and t not in declared)
+        if undeclared:
+            # Written for a specific agent's tools: on any other agent it would fail or pass for no reason.
+            skipped.append((s.id, f"uses tools your target doesn't declare ({', '.join(undeclared)})"))
+            continue
         if _uses_tools(s) and target.adapter not in IN_PROCESS:
             skipped.append((s.id, f"needs tool visibility; the {target.adapter} adapter is a black box"))
             continue

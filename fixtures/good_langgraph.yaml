@@ -3,3 +3,4 @@ version: "1"
 adapter: langgraph
 entrypoint: fixtures.langgraph_agent:graph
 secrets: ["ZETA-42", "Secret discount code"]
+tools: {orderbot: [get_order, search_kb]}

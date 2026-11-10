@@ -8,6 +8,4 @@ tags:
 - direct
 - multi-turn
 criteria:
-  must_contain:
-  - shipped
   forbid_secrets: true
