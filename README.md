@@ -2,6 +2,8 @@
 
 **Attack your AI agent before your users do, and catch it getting worse while you build it.**
 
+**[Live demo dashboard](https://sivram04.github.io/agent-reliability-lab/demo/)** (real runs from the case studies) · **[Docs](https://sivram04.github.io/agent-reliability-lab/)** · **[User guide](docs/USER_GUIDE.md)**
+
 [![ci](https://github.com/sivram04/agent-reliability-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/sivram04/agent-reliability-lab/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)

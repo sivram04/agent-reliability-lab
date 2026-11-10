@@ -17,6 +17,7 @@ nav:
   - Home: index.md
   - Getting started: getting-started.md
   - User guide: USER_GUIDE.md
+  - Live demo dashboard: https://sivram04.github.io/agent-reliability-lab/demo/
   - Guides:
       - Targets: targets.md
       - Scenarios and faults: scenarios.md

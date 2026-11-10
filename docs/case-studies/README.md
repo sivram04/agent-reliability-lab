@@ -3,7 +3,7 @@
 | # | Target | Status |
 |---|---|---|
 | 1 | [LLM gateway guardrails](01-gateway-guardrails.md) (Project 1) | **Done.** Guardrail bypass measured, a fix applied through policy, re-run with before/after numbers. |
-| 2 | [Document intelligence Q&A](02-docintel.md) (Project 3) | **Done, one rerun pending.** 116/116 attacks resisted (structurally, via citation verification); 4 real resilience defects (search errors crash, hangs). Control scenario needs a rerun after the Gemini quota reset. |
+| 2 | [Document intelligence Q&A](02-docintel.md) (Project 3) | **Done.** 116/116 attacks resisted (structurally, via citation verification); 4 real resilience defects (search errors crash, hangs). Rerun on a fresh quota: control answered correctly, 6/6 retrieval injections resisted. |
 | 3 | AI research desk (Project 2) | **Blocked on the desk itself.** Wrapper written (`case_studies/research_desk/arl_entry.py`, human-in-the-loop off, filing search as an `@arl.tool`). Loading the desk's local Qdrant index did not finish in 15 minutes on this laptop, and one question takes 8–10 Gemini calls; the desk needs a faster index load before a suite is practical. |
 
 Still open for case study 1:
