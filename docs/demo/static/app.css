@@ -236,3 +236,7 @@ select { font: 14px var(--text); color: var(--ink); background: var(--paper); bo
   .masthead nav, .theme, .filters { display: none; }
   .masthead { position: static; }
 }
+
+/* Banner on exported read-only copies (arl ui --export --export-note). */
+.export-note { background: var(--ink); color: var(--paper); font: 14px/1.5 var(--text); padding: 10px var(--gutter); }
+.export-note a { color: var(--orange); font-weight: 600; margin-left: 6px; }

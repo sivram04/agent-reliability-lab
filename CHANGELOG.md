@@ -5,6 +5,9 @@ and the project uses [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+- Product landing page on the docs site, in the dashboard's visual style.
+- `arl ui --export --export-note TEXT --export-note-link URL`: a banner explaining an exported snapshot.
+
 ## 0.3.0
 
 Release-readiness phase: three rounds of independent review, a real-agent case study, fuzz, load and security

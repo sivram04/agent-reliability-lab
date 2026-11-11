@@ -139,3 +139,11 @@ def test_scales_to_long_histories(tmp_path):
         data.run(run["id"])
     assert (time.perf_counter() - start) / 50 < 0.05  # per run, independent of the 3,000 others
     assert len(data.bundle(per_target=10)["runs"]) == 30
+
+
+def test_export_note_is_escaped(db, tmp_path):
+    index = export(Data([db]), tmp_path / "s", note="Real runs <b>", note_link="javascript:alert(1)")
+    html = index.read_text(encoding="utf-8")
+    assert "Real runs &lt;b&gt;" in html and "javascript:" not in html
+    index = export(Data([db]), tmp_path / "s2", note="Demo", note_link="../")
+    assert 'href="../"' in index.read_text(encoding="utf-8")

@@ -79,7 +79,8 @@ def serve(data: Data, host: str = "127.0.0.1", port: int = 8765, open_browser: b
     return server
 
 
-def export(data: Data, out: Path, per_target: int | None = 20) -> Path:
+def export(data: Data, out: Path, per_target: int | None = 20, note: str | None = None,
+           note_link: str | None = None) -> Path:
     """A self-contained read-only copy: opens from disk (file://) or any static host."""
     out.mkdir(parents=True, exist_ok=True)
     (out / "static").mkdir(exist_ok=True)
@@ -90,5 +91,10 @@ def export(data: Data, out: Path, per_target: int | None = 20) -> Path:
     (out / "static" / "data.js").write_text(f"window.ARL_DATA = {bundle};\n", encoding="utf-8")
     html = (STATIC / "index.html").read_text(encoding="utf-8").replace(
         '<script src="static/app.js"', '<script src="static/data.js"></script>\n<script src="static/app.js"')
+    if note:  # a banner explaining what the snapshot is, e.g. for a public demo
+        import html as _html
+        link = (f' <a href="{_html.escape(note_link, quote=True)}">Learn more</a>'
+                if note_link and note_link.startswith(("https://", "http://", "../", "/")) else "")
+        html = html.replace("<body>", f'<body>\n<div class="export-note" role="note">{_html.escape(note)}{link}</div>', 1)
     (out / "index.html").write_text(html, encoding="utf-8")
     return out / "index.html"

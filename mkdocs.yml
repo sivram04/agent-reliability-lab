@@ -1,14 +1,19 @@
 site_name: Agent Reliability Lab
-site_description: Chaos engineering for AI agents
+site_description: Attack your AI agent before your users do. Open-source reliability and red-team testing for any AI agent.
 repo_url: https://github.com/sivram04/agent-reliability-lab
 site_url: https://sivram04.github.io/agent-reliability-lab/
 theme:
   name: material
-  features: [content.code.copy, navigation.sections]
+  custom_dir: overrides
+  features: [content.code.copy, navigation.sections, navigation.tabs]
   palette:
     - scheme: default
+      primary: black
+      accent: deep orange
       toggle: { icon: material/brightness-7, name: Dark mode }
     - scheme: slate
+      primary: black
+      accent: deep orange
       toggle: { icon: material/brightness-4, name: Light mode }
 markdown_extensions: [admonition, tables, pymdownx.superfences, toc: { permalink: true }]
 exclude_docs: |
